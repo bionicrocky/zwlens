@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>zwlens · Z-Wave analyzer</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='27' cy='27' r='19' stroke='%237a8699' stroke-width='5'/%3E%3Cpath d='M41 41L57 57' stroke='%237a8699' stroke-width='7'/%3E%3Cpath d='M13 27q3.5-10 7 0t7 0 7 0 7 0' stroke='%232563d9' stroke-width='4'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><svg class="logo" viewBox="0 0 64 64" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="27" cy="27" r="19" stroke="currentColor" stroke-width="5"/><path d="M41 41L57 57" stroke="currentColor" stroke-width="7"/><path class="wave" d="M13 27q3.5-10 7 0t7 0 7 0 7 0" stroke-width="4"/></svg><span>zwlens <small>Z-Wave analyzer</small></span></div>
+  <nav id="tabs" aria-label="Sections">
+    <button data-tab="overview">Overview</button>
+    <button data-tab="conversations">Conversations</button>
+    <button data-tab="troubleshoot">Troubleshoot</button>
+    <button data-tab="nodes">Nodes</button>
+    <button data-tab="frames">Frames</button>
+    <button data-tab="data">Data</button>
+  </nav>
+  <div id="status"></div>
+</header>
+<main id="view"></main>
+<div id="drop">Drop capture files to analyze them</div>
+<div id="toast" role="status"></div>
+<input type="file" id="file" multiple hidden>
+<script src="app.js"></script>
+</body>
+</html>

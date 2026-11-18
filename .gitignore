@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+.claude/
+# Real captures can identify a home network: keep them out of the repository.
+*.zlf
+*.pcap
+*.log
+!samples/*-sample.zlf
+!samples/*-sample.log
