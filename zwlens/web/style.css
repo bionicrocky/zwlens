@@ -142,6 +142,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 .finding:first-of-type { border-top: 0; padding-top: 0; }
 .panel > h2 + .finding { padding-top: 0; }
 .finding .fix { color: var(--muted); margin-top: 3px; }
+.hub { margin-top: 6px; padding: 7px 11px; border-left: 3px solid var(--accent); background: var(--info-bg);
+  border-radius: 0 6px 6px 0; font-size: 13px; color: var(--ink); }
+.hub b { color: var(--info); }
 .finding .src { font-size: 12px; margin-top: 3px; }
 ol.steps { margin: 6px 0 0; padding-left: 0; list-style: none; }
 ol.steps li { padding: 5px 0 5px 30px; position: relative; }

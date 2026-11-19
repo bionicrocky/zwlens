@@ -45,6 +45,7 @@ and choose *Open*. Your browser opens at <http://localhost:8377>. From there **e
 | Keep a live capture | **Data** > **Save as .zlf** |
 | Get a report | **Data** > **Export report** or **Export JSON** |
 | Name your devices | **Nodes** > **Rename** |
+| Get fixes for your hub | **Nodes** > *Controller model* |
 
 No Zniffer stick yet? See [Zniffer hardware](#zniffer-hardware) for what to buy and how to switch
 a stick into Zniffer mode.
@@ -99,9 +100,14 @@ exhaustive, and entries without a detector are reference material only.
 
 ### Controller guides
 
-Pick your controller at the top of the Troubleshoot tab and each checklist shows how to carry out
-its steps on that hub: adding and removing devices, removing dead nodes, rebuilding routes, seeing
-routes and signal, getting logs, changing device settings, and firmware and backup. Guides cover:
+Choose your controller model once, under **Nodes** > *Controller model* (or at the top of the
+Troubleshoot tab). zwlens saves it for that network, and from then on every piece of advice shows
+how to carry it out on your hub, right under the advice itself: each troubleshooter finding, each
+suggestion on the Overview, and each entry in the known-issue library. The Troubleshoot tab also
+lists every direction for your hub: adding and removing devices, removing dead nodes, rebuilding
+routes, seeing routes and signal, getting logs, changing device settings, and firmware and backup.
+Pick *Not listed* if your controller is not covered, and zwlens sticks to general advice.
+Guides cover:
 
 - Home Assistant (Z-Wave JS / Z-Wave JS UI)
 - Hubitat Elevation
