@@ -11,6 +11,7 @@ from . import __version__
 from .aliases import AliasStore
 from .analysis import analyze, report_markdown
 from .controllers import catalogue as controller_catalogue
+from .help_content import help_data
 from .live import LiveClient
 from .parsers import parse_bytes
 from .parsers.zlf import write_zlf
@@ -192,6 +193,8 @@ def make_handler(session: Session, allowed_hosts: set | None):
                     return self._json({"version": session.version})
                 if u.path == "/api/analysis":
                     return self._json(session.summary())
+                if u.path == "/api/help":
+                    return self._json(help_data())
                 if u.path == "/api/frames":
                     return self._json(session.frames(parse_qs(u.query)))
                 if u.path == "/api/port":

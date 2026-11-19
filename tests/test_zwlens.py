@@ -270,6 +270,71 @@ class ControllerGuides(unittest.TestCase):
         self.assertIn("qolsys", {g["id"] for g in guides})
 
 
+class Help(unittest.TestCase):
+    def setUp(self):
+        from zwlens.help_content import help_data
+        self.data = help_data()
+
+    def test_sections_are_complete(self):
+        groups = {g["id"] for g in self.data["groups"]}
+        for s in self.data["sections"]:
+            self.assertTrue(s["title"].strip(), s["id"])
+            self.assertTrue(s["body"] or s["id"] == "glossary", s["id"])
+            self.assertIn(s["group"], groups, s["id"])
+            for block in s["body"]:
+                for text in (block if isinstance(block, list) else [block]):
+                    self.assertIsInstance(text, str)
+                    self.assertTrue(text.strip(), s["id"])
+
+    def test_ids_unique_and_cross_links_resolve(self):
+        import re
+        ids = [s["id"] for s in self.data["sections"]] + [g["id"] for g in self.data["glossary"]]
+        self.assertEqual(len(ids), len(set(ids)))
+        for i in ids:
+            self.assertRegex(i, r"^[a-z0-9-]+$")
+        refs = re.findall(r"\[\[([\w-]+)", json.dumps(self.data))
+        self.assertTrue(refs)
+        self.assertEqual([r for r in refs if r not in ids], [])
+        self.assertEqual([g["see"] for g in self.data["glossary"] if g["see"] not in ids], [])
+
+    def test_links_are_https(self):
+        links = [link for s in self.data["sections"] for link in s["links"]]
+        self.assertTrue(links)
+        for link in links:
+            self.assertTrue(link["url"].startswith("https://"), link["url"])
+            self.assertTrue(link["label"].strip())
+
+    def test_required_topics_present(self):
+        ids = {s["id"] for s in self.data["sections"]}
+        for need in ("live-zniffer", "files", "controller-guides", "aliases", "saving", "health-score", "mesh",
+                     "routing", "acks", "data-rates", "frequencies", "signal", "sleeping", "flirs", "inclusion",
+                     "security", "command-classes", "associations", "supervision", "multicast", "long-range",
+                     "zniffer", "glossary", "faq-score"):
+            self.assertIn(need, ids)
+        for issue in ("unreachable", "signal", "routing", "congestion", "security"):
+            self.assertIn("faq-" + issue, ids)  # the UI links each troubleshooter to faq-<issue id>
+        terms = {g["term"].split(" (")[0] for g in self.data["glossary"]}
+        for need in ("FLiRS", "DSK", "SUC / SIS", "NVM", "RSSI", "S0", "S2", "Explorer frame"):
+            self.assertIn(need, terms)
+        self.assertTrue(any(g["term"].startswith("NIF") for g in self.data["glossary"]))
+        self.assertTrue(any(g["term"].startswith("LWR") for g in self.data["glossary"]))
+
+    def test_help_is_served(self):
+        session = Session(AliasStore(Path(tempfile.mkdtemp()) / "a.json"))
+        httpd = serve(session, "127.0.0.1", 0)
+        threading.Thread(target=httpd.serve_forever, daemon=True).start()
+        try:
+            base = f"http://127.0.0.1:{httpd.server_address[1]}"
+            with urllib.request.urlopen(base + "/api/help") as r:
+                self.assertEqual(r.status, 200)
+                self.assertEqual(json.loads(r.read()), json.loads(json.dumps(self.data)))
+            with urllib.request.urlopen(base + "/") as r:
+                self.assertIn(b'data-tab="help"', r.read())
+        finally:
+            httpd.shutdown()
+            httpd.server_close()
+
+
 class AliasesAndServer(unittest.TestCase):
     def test_alias_store(self):
         with tempfile.TemporaryDirectory() as d:

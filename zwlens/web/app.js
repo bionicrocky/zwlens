@@ -74,6 +74,7 @@ function render() {
   const live = A.live;
   $('#status').innerHTML = (live ? pill(live.state === 'connected' ? 'ok' : live.state === 'connecting' ? 'info' : 'crit', 'Live: ' + live.state) : '')
     + `<span>${A.network.frames} frames</span>`;
+  if (S.tab === 'help') { if (!$('#view > .help')) $('#view').innerHTML = help(); return; }  // help does not depend on the capture
   const empty = !A.network.frames;
   const views = { overview, conversations, troubleshoot, nodes, frames, data };
   $('#view').innerHTML = (empty && S.tab !== 'data')
@@ -508,4 +509,175 @@ setInterval(async () => {
   } catch (e) { /* server stopped; keep the page usable */ }
 }, 2000);
 
-load().then(() => { if (A.network.frames) { S.tab = 'overview'; render(); } }).catch(e => toast(e.message));
+load().then(() => { if (A.network.frames && S.tab !== 'help') { S.tab = 'overview'; render(); } }).catch(e => toast(e.message));
+
+// ---------------------------------------------------------------- help
+// The Help tab: sections and glossary from /api/help, a searchable table of contents, and deep links
+// such as #help/routing. Everything here is self-contained; other views only gain "?" buttons, added
+// after each render by helpDecorate() so the view code itself stays untouched.
+let HELP = null, helpLoading = false;
+S.help = 'start'; S.hq = '';
+const helpBtn = (id, what) => `<button class="qhelp" data-act="help" data-id="${esc(id)}" aria-label="Help: ${esc(what)}" title="Help: ${esc(what)}">?</button>`;
+const helpPlain = s => String(s).replace(/\*|`/g, '').replace(/\[\[[\w-]+\|(.+?)\]\]/g, '$1').replace(/\[\[([\w-]+)\]\]/g, (m, id) => helpTitle(id));
+function helpTitle(id) {
+  const s = HELP && (HELP.sections.find(x => x.id === id) || HELP.glossary.find(x => x.id === id));
+  return s ? (s.title || s.term) : id;
+}
+function helpInline(s) {
+  return esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\*(.+?)\*/g, '<em>$1</em>').replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/\[\[([\w-]+)(?:\|(.+?))?\]\]/g, (m, id, text) => `<a href="#help/${id}">${text || esc(helpTitle(id))}</a>`);
+}
+const helpBlocks = body => body.map(b => Array.isArray(b) ? `<ul>${b.map(li => `<li>${helpInline(li)}</li>`).join('')}</ul>` : `<p>${helpInline(b)}</p>`).join('');
+async function loadHelp() {
+  if (helpLoading) return;
+  helpLoading = true;
+  try {
+    HELP = await api('/api/help');
+    for (const s of HELP.sections) s._text = [s.title, s.summary, ...s.body.flat()].map(helpPlain).join(' ').toLowerCase();
+    for (const g of HELP.glossary) g._text = (g.term + ' ' + g.text).toLowerCase();
+  } catch (e) { toast('Could not load help: ' + e.message); }
+  helpLoading = false;
+  if (S.tab === 'help') helpShow(false);
+}
+function helpMatches() {
+  const words = S.hq.toLowerCase().split(/\s+/).filter(Boolean);
+  const hit = x => words.every(w => x._text.includes(w));
+  return { words, sections: HELP.sections.filter(hit), glossary: HELP.glossary.filter(hit) };
+}
+function helpCurrent() {
+  if (S.help.startsWith('g-')) return HELP.sections.find(s => s.id === 'glossary');
+  return HELP.sections.find(s => s.id === S.help) || HELP.sections[0];
+}
+function helpToc() {
+  const m = S.hq.trim() ? helpMatches() : null;
+  const cur = helpCurrent().id;
+  const shown = m ? new Set(m.sections.map(s => s.id).concat(m.glossary.length ? ['glossary'] : [])) : null;
+  const toc = HELP.groups.map(g => {
+    const list = HELP.sections.filter(s => s.group === g.id && (!shown || shown.has(s.id)));
+    return list.length ? `<h3>${esc(g.title)}</h3><ul>${list.map(s => `<li><a href="#help/${s.id}" ${s.id === cur && !m ? 'aria-current="page"' : ''}>${esc(s.title)}</a></li>`).join('')}</ul>` : '';
+  }).join('');
+  return toc || '<p class="muted small">No topics match.</p>';
+}
+function helpSelect() {
+  const cur = helpCurrent().id;
+  return HELP.groups.map(g => `<optgroup label="${esc(g.title)}">${HELP.sections.filter(s => s.group === g.id).map(s => `<option value="${s.id}" ${s.id === cur ? 'selected' : ''}>${esc(s.title)}</option>`).join('')}</optgroup>`).join('');
+}
+function helpLinks(links) {
+  const ok = (links || []).filter(l => /^https:\/\//.test(l.url));
+  return ok.length ? `<div class="help-more"><h2>Further reading</h2><ul>${ok.map(l => `<li><a href="${esc(l.url)}" target="_blank" rel="noopener noreferrer">${esc(l.label)}</a></li>`).join('')}</ul></div>` : '';
+}
+function helpGlossary(list) {
+  return `<dl class="gloss">${list.map(g => `<div class="gterm ${g.id === S.help ? 'on' : ''}" id="${g.id}"><dt>${esc(g.term)}</dt><dd>${esc(g.text)}${g.see && g.see !== 'glossary' ? ` <a href="#help/${g.see}">More: ${esc(helpTitle(g.see))}</a>` : ''}</dd></div>`).join('')}</dl>`;
+}
+function helpBody() {
+  if (S.hq.trim()) {
+    const m = helpMatches();
+    const n = m.sections.length + m.glossary.length;
+    return `<h1>${n ? n + ' result' + (n === 1 ? '' : 's') : 'No results'} for “${esc(S.hq.trim())}”</h1>
+      ${n ? '' : '<p class="muted">Try fewer or shorter words, or pick a topic from the list.</p>'}
+      ${m.glossary.length ? `<h2>Glossary</h2>${helpGlossary(m.glossary)}` : ''}
+      ${m.sections.length ? `<h2>Topics</h2><ul class="help-results">${m.sections.map(s => `<li><a href="#help/${s.id}">${esc(s.title)}</a> <span class="muted small">· ${esc(HELP.groups.find(g => g.id === s.group).title)}</span><div class="muted">${esc(s.summary)}</div></li>`).join('')}</ul>` : ''}`;
+  }
+  const s = helpCurrent(), all = HELP.sections, i = all.indexOf(s);
+  const prev = all[i - 1], next = all[i + 1];
+  return `<div class="help-group">${esc(HELP.groups.find(g => g.id === s.group).title)}</div>
+    <h1>${esc(s.title)}</h1>${s.summary ? `<p class="lead">${esc(s.summary)}</p>` : ''}
+    ${helpBlocks(s.body)}${s.id === 'glossary' ? helpGlossary(HELP.glossary) : ''}${helpLinks(s.links)}
+    <nav class="help-pager" aria-label="Previous and next topic">${prev ? `<a href="#help/${prev.id}">← ${esc(prev.title)}</a>` : '<span></span>'}${next ? `<a href="#help/${next.id}">${esc(next.title)} →</a>` : ''}</nav>`;
+}
+function help() {
+  if (!HELP) { loadHelp(); return '<div class="panel empty help-loading">Loading help…</div>'; }
+  return `<div class="help">
+    <aside class="panel help-side">
+      <input type="search" id="hq" placeholder="Search help and glossary…" aria-label="Search help and glossary" value="${esc(S.hq)}" autocomplete="off">
+      <select id="helpsel" class="help-select" aria-label="Help topic">${helpSelect()}</select>
+      <nav class="help-toc" id="helptoc" aria-label="Help topics">${helpToc()}</nav>
+    </aside>
+    <article class="panel help-body" id="helpbody" tabindex="-1" aria-live="polite">${helpBody()}</article></div>`;
+}
+function helpUpdate() {
+  $('#helptoc').innerHTML = helpToc();
+  $('#helpsel').innerHTML = helpSelect();
+  $('#helpbody').innerHTML = helpBody();
+  helpTocScroll();
+}
+function helpTocScroll() {  // keep the current topic visible in the sidebar
+  const side = $('.help-side'), a = $('#helptoc a[aria-current]');
+  if (side && a && side.scrollHeight > side.clientHeight) side.scrollTop = Math.max(0, a.offsetTop - side.clientHeight / 2);
+}
+function helpRoute() {
+  const m = location.hash.match(/^#help(?:\/([\w-]+))?$/);
+  if (!m) return false;
+  S.tab = 'help'; S.hq = '';
+  if (m[1]) S.help = m[1];
+  return true;
+}
+function helpShow(focus) {
+  if (!A) return;
+  const hq = $('#hq');
+  if (HELP && $('#view > .help')) {
+    document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === 'help'));
+    if (hq) hq.value = S.hq;
+    helpUpdate();
+  } else { render(); helpTocScroll(); }
+  const g = S.help.startsWith('g-') && !S.hq && document.getElementById(S.help);
+  if (g) g.scrollIntoView({ block: 'center' });
+  else window.scrollTo(0, 0);
+  if (focus && HELP) $('#helpbody').focus({ preventScroll: true });
+}
+function openHelp(id) {
+  const h = '#help/' + id;
+  if (location.hash === h) { helpRoute(); helpShow(true); } else location.hash = h;
+}
+actions.help = el => openHelp(el.dataset.id);
+window.addEventListener('hashchange', () => { if (helpRoute()) helpShow(document.activeElement !== $('#hq')); });
+$('#tabs').addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  if (b.dataset.tab === 'help') history.pushState(null, '', '#help/' + S.help);
+  else if (location.hash.startsWith('#help')) history.replaceState(null, '', location.pathname + location.search);
+});
+document.addEventListener('input', ev => {
+  if (ev.target.id !== 'hq' || !HELP) return;
+  S.hq = ev.target.value; helpUpdate();
+});
+document.addEventListener('click', ev => {  // a link to the topic already in the address bar fires no hashchange
+  const a = ev.target.closest('a[href^="#help/"]');
+  if (a && a.getAttribute('href') === location.hash) { ev.preventDefault(); openHelp(a.getAttribute('href').slice(6)); }
+});
+document.addEventListener('change', ev => { if (ev.target.id === 'helpsel') openHelp(ev.target.value); });
+document.addEventListener('keydown', ev => {
+  if (ev.key === 'Escape' && ev.target.id === 'hq' && S.hq) { ev.target.value = ''; S.hq = ''; helpUpdate(); }
+  if (ev.key === '/' && S.tab === 'help' && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) { const i = $('#hq'); if (i) { ev.preventDefault(); i.focus(); } }
+});
+
+// "?" buttons beside key concepts elsewhere. Matched by visible label, so a renamed label simply loses
+// its button instead of breaking anything.
+const HELP_TIPS = {
+  th: { Power: ['sleeping', 'power and sleeping devices'], Security: ['security', 'security S0 and S2'], Health: ['faq-node-health', 'node health'],
+    Signal: ['signal', 'signal strength'], 'Route from controller': ['routing', 'routing'], Undelivered: ['acks', 'delivery and retries'] },
+  dt: { 'Home ID': ['ids', 'home ID'], Topology: ['mesh', 'mesh topology'], Security: ['security', 'security S0 and S2'],
+    'Data rates': ['data-rates', 'data rates'], 'Long Range': ['long-range', 'Long Range'], Power: ['sleeping', 'battery devices'] },
+  k: { 'Network health score': ['health-score', 'the health score'], 'Noise floor': ['signal', 'noise floor'], 'Not delivered': ['acks', 'delivery'],
+    'Needed a retry': ['acks', 'retransmissions'], 'Channel busy': ['faq-congestion', 'channel busy'] },
+  h2: { 'Live from a Zniffer stick': ['live-zniffer', 'capturing from a Zniffer'], 'Live from a controller': ['live-controller', 'following a controller'],
+    'Add capture files': ['files', 'capture files'], 'Loaded captures': ['saving', 'saving and exporting'], 'Your controller': ['controller-guides', 'controller guides'],
+    'Known-issue library': ['tab-troubleshoot', 'the known-issue library'], 'Network map': ['tab-overview', 'the network map'] },
+};
+function helpDecorate() {
+  if (S.tab === 'help') return;
+  const add = (sel, map) => document.querySelectorAll('#view ' + sel).forEach(el => {
+    const tip = map[el.textContent.trim()];
+    if (tip && !el.querySelector('.qhelp')) el.insertAdjacentHTML('beforeend', ' ' + helpBtn(...tip));
+  });
+  add('th', HELP_TIPS.th); add('.kv dt', HELP_TIPS.dt); add('.card .k', HELP_TIPS.k); add('h2', HELP_TIPS.h2);
+  document.querySelectorAll('#view td').forEach(td => {
+    if (td.firstChild && td.firstChild.nodeType === 3 && td.firstChild.textContent.startsWith('Battery, FLiRS')) td.firstChild.after(document.createRange().createContextualFragment(' ' + helpBtn('flirs', 'FLiRS devices')));
+  });
+  for (const iss of A.issues || []) {
+    const p = document.querySelector(`#issue-${CSS.escape(iss.id)} > p.muted`);
+    if (p && !p.querySelector('a')) p.insertAdjacentHTML('beforeend', ` <a href="#help/faq-${esc(iss.id)}">What this means</a>`);
+  }
+}
+const helpBaseRender = render;
+render = function () { helpBaseRender(); try { helpDecorate(); } catch (e) { /* help buttons are optional */ } };
+helpRoute();

@@ -81,6 +81,7 @@ python3 -m zwlens analyze capture.zlf               # print a report and exit (-
 | **Nodes** | Every node categorised by type, role, power source, security, health and traffic. *Rename* gives a node an alias, location and notes. |
 | **Frames** | Every decoded frame, searchable, with raw bytes. |
 | **Data** | Load files, start a live capture, save a capture as `.zlf`, export a report. |
+| **Help** | A searchable guide to using zwlens and to how Z-Wave works (mesh, routing, signal, sleeping and FLiRS devices, S0/S2, Long Range and more), a glossary, and answers to "why does zwlens say…". Small **?** buttons beside the health score, signal, routes, security and FLiRS open the matching topic; topics have links such as `#help/routing`. |
 
 ### Known-issue library
 
