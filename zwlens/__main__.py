@@ -15,6 +15,11 @@ from .server import Session, serve
 
 
 def main(argv=None) -> int:
+    for stream in (sys.stdout, sys.stderr):  # Windows consoles default to a legacy code page
+        try:
+            stream.reconfigure(errors="replace")
+        except (AttributeError, ValueError):
+            pass
     p = argparse.ArgumentParser(prog="zwlens", description="Z-Wave traffic analyzer")
     p.add_argument("--version", action="version", version=__version__)
     sub = p.add_subparsers(dest="cmd")

@@ -1,5 +1,7 @@
 # zwlens
 
+[![Tests](https://github.com/bionicrocky/zwlens/actions/workflows/tests.yml/badge.svg)](https://github.com/bionicrocky/zwlens/actions/workflows/tests.yml)
+
 <img src="zwlens/web/logo.svg" width="72" alt="zwlens logo" align="right">
 
 **Capture and troubleshoot a Z-Wave network from one small app.** Plug in a Zniffer stick, press
@@ -233,6 +235,9 @@ is the only position where they say something about what the controller hears.
 ```
 python3 -m unittest discover -s tests
 ```
+
+GitHub Actions runs the tests and a command-line smoke test on Linux, Windows and macOS for every
+push and pull request (`.github/workflows/tests.yml`).
 
 The code is plain Python in `zwlens/`:
 

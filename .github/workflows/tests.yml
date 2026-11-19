@@ -1,0 +1,42 @@
+name: Tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ["3.13"]
+        include:
+          # The oldest Python zwlens supports, on the two platforms where it is easy to get.
+          - os: ubuntu-latest
+            python: "3.9"
+          - os: windows-latest
+            python: "3.9"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Command-line smoke test
+        run: |
+          python -m zwlens --version
+          python -m zwlens analyze samples/zniffer-sample.zlf
+          python -m zwlens analyze --format json samples/zwavejs-sample.log
+          python samples/make_samples.py
+          git diff --exit-code -- samples/zniffer-sample.zlf
