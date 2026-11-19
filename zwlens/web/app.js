@@ -90,17 +90,18 @@ function chips(obj) {
 function overview() {
   const n = A.network;
   const sev = n.score >= 85 ? 'ok' : n.score >= 60 ? 'warn' : 'crit';
-  const card = (v, k) => `<div class="card"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div></div>`;
+  // each card jumps to the view that explains its number; status pre-filters Conversations
+  const card = (v, k, tab, status = '', hint = '') => `<button class="card go" data-act="card" data-tab="${tab}" data-status="${status}" title="${esc(hint)}"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div></button>`;
   const sug = A.suggestions.map((s, i) => `<div class="finding">${pill(s.severity)} <b>${esc(s.area)}</b><div>${esc(s.why)}</div><div class="fix">${esc(s.do)}</div>${hubStep(s.action)}
     ${s.issue ? `<button class="link small" data-act="issue" data-id="${esc(s.issue)}">${s.issue.startsWith('kb-') ? 'Causes and fixes' : 'Open troubleshooter'}</button>` : ''}</div>`).join('');
   return `
   <div class="grid cards">
-    <div class="card hero"><svg class="ring" viewBox="0 0 72 72" role="img" aria-label="Health score ${n.score} of 100"><circle class="track" cx="36" cy="36" r="30"/><circle class="val" cx="36" cy="36" r="30" style="stroke:var(--${sev})" stroke-dasharray="${(n.score / 100 * 188.5).toFixed(1)} 188.5"/><text x="36" y="43" text-anchor="middle">${n.score}</text></svg>
-      <div><div class="v" style="color:var(--${sev})">${esc(n.grade)}</div><div class="k">Network health score</div></div></div>
-    ${card(n.nodes, 'Nodes')}${card(n.messages, 'Messages')}${card(A.conv_total, 'Conversations')}
-    ${card(pct(n.fail_pct), 'Not delivered')}${card(pct(n.retx_pct), 'Needed a retry')}
-    ${card(n.airtime_pct != null ? n.airtime_pct + '%' : (n.msgs_per_min != null ? n.msgs_per_min + '/min' : 'n/a'), n.airtime_pct != null ? 'Channel busy' : 'Message rate')}
-    ${card(n.noise_floor != null ? n.noise_floor + ' dBm' : 'n/a', 'Noise floor')}
+    <button class="card hero go" data-act="card" data-tab="troubleshoot" data-status="" title="See what is lowering the score"><svg class="ring" viewBox="0 0 72 72" role="img" aria-label="Health score ${n.score} of 100"><circle class="track" cx="36" cy="36" r="30"/><circle class="val" cx="36" cy="36" r="30" style="stroke:var(--${sev})" stroke-dasharray="${(n.score / 100 * 188.5).toFixed(1)} 188.5"/><text x="36" y="43" text-anchor="middle">${n.score}</text></svg>
+      <div><div class="v" style="color:var(--${sev})">${esc(n.grade)}</div><div class="k">Network health score</div></div></button>
+    ${card(n.nodes, 'Nodes', 'nodes', '', 'Show every node')}${card(n.messages, 'Messages', 'frames', '', 'Show the frames')}${card(A.conv_total, 'Conversations', 'conversations', '', 'Show all conversations')}
+    ${card(pct(n.fail_pct), 'Not delivered', 'conversations', 'fail', 'Show failed conversations')}${card(pct(n.retx_pct), 'Needed a retry', 'conversations', 'warn', 'Show conversations with retries')}
+    ${card(n.airtime_pct != null ? n.airtime_pct + '%' : (n.msgs_per_min != null ? n.msgs_per_min + '/min' : 'n/a'), n.airtime_pct != null ? 'Channel busy' : 'Message rate', 'frames', '', 'Show the frames')}
+    ${card(n.noise_floor != null ? n.noise_floor + ' dBm' : 'n/a', 'Noise floor', 'troubleshoot', '', 'Interference and range checks')}
   </div>
   <div class="grid cols2">
     <div>
@@ -453,6 +454,10 @@ async function upload(files) {
 }
 const actions = {
   tab: async el => { S.tab = el.dataset.tab; if (S.tab === 'frames') await loadFrames(false); render(); },
+  card: async el => {
+    if (el.dataset.tab === 'conversations') { S.cq = ''; S.cnode = ''; S.cstatus = el.dataset.status; }
+    await actions.tab(el); window.scrollTo(0, 0);
+  },
   conv: el => loadConv(+el.dataset.id),
   gotoconv: async el => { S.tab = 'conversations'; S.cq = ''; S.cnode = ''; S.cstatus = ''; await loadConv(+el.dataset.id); },
   raw: el => el.classList.toggle('open'),
@@ -520,6 +525,8 @@ document.addEventListener('input', ev => {
 document.addEventListener('keydown', ev => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('.issue .head')) { ev.preventDefault(); ev.target.click(); }
   if (ev.key === 'Enter' && ev.target.id === 'al-name') { const b = document.querySelector('[data-act=savealias]'); if (b) b.click(); } });
 $('#tabs').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b) actions.tab(b); });
+$('.brand').addEventListener('click', () => $('#tabs [data-tab=overview]').click());  // title = home
+$('.brand').addEventListener('keydown', ev => { if (ev.key === 'Enter') $('.brand').click(); });
 
 let dragDepth = 0;
 window.addEventListener('dragenter', ev => { if (ev.dataTransfer && [...ev.dataTransfer.types].includes('Files')) { dragDepth++; $('#drop').classList.add('on'); ev.preventDefault(); } });

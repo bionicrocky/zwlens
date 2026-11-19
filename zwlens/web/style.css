@@ -59,6 +59,10 @@ p { margin: 0 0 8px; }
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); }
 .card .v { font-size: 24px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 .card .k { color: var(--muted); font-size: 12px; margin-top: 2px; }
+button.card.go { font: inherit; color: inherit; text-align: left; cursor: pointer; transition: border-color .15s, transform .15s; }
+button.card.go:hover, button.card.go:focus-visible { border-color: var(--accent); transform: translateY(-1px); }
+.brand { cursor: pointer; border-radius: 6px; }
+.brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .card.hero { display: flex; align-items: center; gap: 14px; grid-column: span 2; }
 .card.hero .v { font-size: 15px; letter-spacing: 0; }
 .ring { width: 72px; height: 72px; flex: none; }
