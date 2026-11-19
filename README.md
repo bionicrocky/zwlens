@@ -14,6 +14,10 @@
 - **Nothing to install but Python.** No packages, no build step, no account. It runs on Linux, macOS
   and Windows, entirely on your computer; captures never leave it.
 
+![zwlens overview: health score, network category, network map and prioritised suggestions](docs/screenshot-overview.png)
+
+<sub>The Overview tab, showing the bundled sample capture.</sub>
+
 ## Quick start
 
 1. Install [Python 3.9 or newer](https://www.python.org/downloads/) if you do not have it.
@@ -27,7 +31,8 @@
    | macOS | `start-zwlens.command` |
    | Linux | `start-zwlens.sh` (or run `python3 -m zwlens` in the folder) |
 
-Your browser opens at <http://localhost:8377>. From there **everything is done in the app**:
+If macOS refuses to open the launcher because it is from an unidentified developer, right-click it
+and choose *Open*. Your browser opens at <http://localhost:8377>. From there **everything is done in the app**:
 
 | You want to | In the app |
 |---|---|
