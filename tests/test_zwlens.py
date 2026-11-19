@@ -335,6 +335,44 @@ class Help(unittest.TestCase):
             httpd.server_close()
 
 
+class ControllerModel(unittest.TestCase):
+    def test_action_for_mapping(self):
+        from zwlens.controllers import action_for
+        self.assertEqual(action_for("Rebuild routes for this node."), "rebuild")
+        self.assertEqual(action_for("Use Remove Failed Node, then rebuild routes."), "remove_failed")
+        self.assertEqual(action_for("Exclude this device and re-include it with S2."), "exclude")
+        self.assertEqual(action_for("Raise the reporting thresholds in its configuration parameters."), "config")
+        self.assertEqual(action_for("Update the controller firmware."), "firmware")
+        self.assertEqual(action_for("Put the controller on a USB extension cable."), "routes")
+        self.assertIsNone(action_for("Nothing actionable here."))
+
+    def test_findings_and_suggestions_carry_actions(self):
+        from zwlens.controllers import ACTIONS
+        a = analyze(parse_bytes(write_zlf(make_samples.sniffer_entries()), "a.zlf").frames)
+        for iss in a["issues"]:
+            for f in iss["findings"]:
+                self.assertIn(f["action"], list(ACTIONS) + [None])
+        self.assertTrue(all("action" in s for s in a["suggestions"]))
+        self.assertTrue(all(e["action"] in ACTIONS for e in a["catalog"]))
+        unreachable = next(i for i in a["issues"] if i["id"] == "unreachable")["findings"][0]
+        self.assertEqual(unreachable["action"], "rebuild")
+
+    def test_alias_update_keeps_model_on_rename(self):
+        with tempfile.TemporaryDirectory() as d:
+            s = AliasStore(Path(d) / "a.json")
+            s.update("c0ffee01:1", model="hubitat")
+            s.set("c0ffee01:1", "Hub", "Office")
+            again = AliasStore(Path(d) / "a.json")
+            self.assertEqual(again.data["c0ffee01:1"], {"model": "hubitat", "name": "Hub", "location": "Office"})
+            self.assertEqual(again.model("c0ffee01", 1), "hubitat")
+            again.set("c0ffee01:1")  # clearing the alias keeps the model
+            self.assertEqual(again.data["c0ffee01:1"], {"model": "hubitat"})
+            again.update("c0ffee01:1", model="")
+            self.assertNotIn("c0ffee01:1", again.data)
+            again.update("*:0", model="ring")  # chosen before a controller was identified
+            self.assertEqual(again.model("deadbeef", 5), "ring")
+
+
 class AliasesAndServer(unittest.TestCase):
     def test_alias_store(self):
         with tempfile.TemporaryDirectory() as d:
@@ -391,6 +429,20 @@ class AliasesAndServer(unittest.TestCase):
                 self.assertEqual(call("/api/settings", b'{"chip":"500"}', h)[0], 200)
                 self.assertEqual(json.loads(call("/api/analysis")[1])["settings"]["chip"], "500")
                 self.assertEqual(call("/api/live/region", b'{"id":1}', h)[0], 409)
+                summary = json.loads(call("/api/analysis")[1])
+                self.assertIsNone(summary["controller_model"])
+                self.assertEqual(summary["controller_key"], {"home": "c0ffee01", "node": 1})
+                self.assertEqual(call("/api/controller", b'{"home":"c0ffee01","node":1,"model":"nope"}', h)[0], 400)
+                self.assertEqual(call("/api/controller", b'{"home":"../x","node":1,"model":"ring"}', h)[0], 400)
+                self.assertEqual(call("/api/controller", b'{"home":"c0ffee01","node":1,"model":"qolsys"}', h)[0], 200)
+                summary = json.loads(call("/api/analysis")[1])
+                self.assertEqual(summary["controller_model"], "qolsys")
+                ctrl = next(n for n in summary["nodes"] if n["controller"] and not n["foreign"])
+                self.assertTrue(ctrl["type"].startswith("Qolsys"))
+                call("/api/alias", json.dumps({"key": "c0ffee01:1", "name": "Panel"}).encode(), h)
+                self.assertEqual(json.loads(call("/api/analysis")[1])["controller_model"], "qolsys")
+                call("/api/controller", b'{"home":"c0ffee01","node":1,"model":"other"}', h)
+                self.assertEqual(json.loads(call("/api/analysis")[1])["controller_model"], "other")
                 self.assertEqual(call("/api/nope")[0], 404)
                 self.assertEqual(call("/../zwlens/server.py")[0], 404)
             finally:

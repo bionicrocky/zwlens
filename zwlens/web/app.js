@@ -48,6 +48,7 @@ async function load() {
   A.catalog = A.catalog || [];
   A.settings = A.settings || { chip: '700' };
   A.guides = A.guides || { actions: {}, issue_actions: {}, controllers: [] };
+  if (A.controller_model) S.ctrl = A.controller_model;  // saved per network; browser storage is only a fallback
   names = {};
   for (const n of A.nodes) names[n.home + ':' + n.id] = n.name;
   if (S.conv != null && !A.conversations.some(c => c.id === S.conv)) { S.conv = null; S.convFrames = null; }
@@ -90,7 +91,7 @@ function overview() {
   const n = A.network;
   const sev = n.score >= 85 ? 'ok' : n.score >= 60 ? 'warn' : 'crit';
   const card = (v, k) => `<div class="card"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div></div>`;
-  const sug = A.suggestions.map((s, i) => `<div class="finding">${pill(s.severity)} <b>${esc(s.area)}</b><div>${esc(s.why)}</div><div class="fix">${esc(s.do)}</div>
+  const sug = A.suggestions.map((s, i) => `<div class="finding">${pill(s.severity)} <b>${esc(s.area)}</b><div>${esc(s.why)}</div><div class="fix">${esc(s.do)}</div>${hubStep(s.action)}
     ${s.issue ? `<button class="link small" data-act="issue" data-id="${esc(s.issue)}">${s.issue.startsWith('kb-') ? 'Causes and fixes' : 'Open troubleshooter'}</button>` : ''}</div>`).join('');
   return `
   <div class="grid cards">
@@ -108,7 +109,7 @@ function overview() {
           <dt>Home ID</dt><dd class="mono">${esc(n.home || 'unknown')}${n.foreign_nodes ? ` <span class="muted">(+${n.homes.length - 1} other network${n.homes.length > 2 ? 's' : ''} in range)</span>` : ''}</dd>
           <dt>Size</dt><dd>${esc(n.size)}</dd>
           <dt>Topology</dt><dd>${esc(n.topology)}</dd>
-          <dt>Controller</dt><dd>${n.controller != null ? esc(nameOf(n.home, n.controller)) : 'unknown'}</dd>
+          <dt>Controller</dt><dd>${n.controller != null ? esc(nameOf(n.home, n.controller)) : 'unknown'}${ctrlGuide() ? ` · ${esc(ctrlGuide().name)}` : ''} <button class="link small" data-act="tab" data-tab="nodes">${ctrlGuide() ? 'change' : 'set model'}</button></dd>
           <dt>Captured</dt><dd>${esc(fmtDur(n.duration))}, from ${esc(Object.entries(n.sources).map(([k, v]) => `${k} (${v})`).join(', '))}</dd>
           <dt>Health</dt><dd>${chips(n.by_health)}</dd>
           <dt>Power</dt><dd>${chips(n.by_power)}</dd>
@@ -244,7 +245,7 @@ function troubleshoot() {
   return controllerPanel() + `<p class="muted">The five most common Z-Wave problems, checked against this capture. Each one lists what was found and a guided checklist.</p>` +
     A.issues.map(iss => {
       const open = S.open[iss.id] ?? iss.findings.length > 0;
-      const finds = iss.findings.map(f => `<div class="finding">${pill(f.severity)} ${esc(f.text)}<div class="fix"><b>What to do:</b> ${esc(f.fix)}</div>
+      const finds = iss.findings.map(f => `<div class="finding">${pill(f.severity)} ${esc(f.text)}<div class="fix"><b>What to do:</b> ${esc(f.fix)}</div>${hubStep(f.action)}
         ${f.node ? `<button class="link small" data-act="nodeconv" data-id="${esc(f.node.split(':')[1])}">Show this node's conversations</button>` : ''}</div>`).join('');
       const steps = iss.steps.map((s, i) => { const k = iss.id + ':' + i; return `<li class="${done[k] ? 'done' : ''}"><input type="checkbox" data-act="step" data-k="${esc(k)}" ${done[k] ? 'checked' : ''} aria-label="Step done"> ${esc(s)}</li>`; }).join('');
       return `<div class="panel issue ${iss.severity}" id="issue-${esc(iss.id)}">
@@ -256,6 +257,25 @@ function troubleshoot() {
 }
 
 function ctrlGuide() { return A.guides.controllers.find(c => c.id === S.ctrl); }
+function ctrlOptions(placeholder) {
+  return `<option value="">${esc(placeholder)}</option>${A.guides.controllers.map(c => `<option value="${esc(c.id)}" ${c.id === S.ctrl ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+    <option value="other" ${S.ctrl === 'other' ? 'selected' : ''}>Not listed</option>`;
+}
+async function saveCtrl(model) {
+  const key = A.controller_key || { home: '*', node: 0 };
+  await post('/api/controller', { home: key.home, node: key.node, model });
+  S.ctrl = model;
+  try { localStorage.setItem('zwlens.ctrl', model); } catch (e) { /* storage unavailable */ }
+  const g = ctrlGuide();
+  toast(g ? `Troubleshooting steps now show how to do each fix on ${g.name}` : model === 'other' ? 'Showing general advice only' : 'Controller model cleared');
+  await load();
+}
+// One line under a piece of advice: how to carry it out on the chosen controller.
+function hubStep(action) {
+  const g = ctrlGuide(), a = g && action && g.actions[action];
+  if (!a) return '';
+  return `<div class="hub"><b>On ${esc(g.name)}:</b> ${esc(a.how)}${a.note ? ` <span class="muted">${esc(a.note)}</span>` : ''}${a.src && /^https:\/\//.test(a.src) ? ` <a href="${esc(a.src)}" target="_blank" rel="noopener noreferrer">Source</a>` : ''}</div>`;
+}
 function howTo(g, ids) {
   return ids.filter(id => g.actions[id]).map(id => { const a = g.actions[id]; return `<div class="finding"><b>${esc(A.guides.actions[id])}</b>
     <div>${esc(a.how)}</div>${a.note ? `<div class="fix">${esc(a.note)}</div>` : ''}
@@ -268,9 +288,10 @@ function controllerPanel() {
       ${g.quirks.length ? `<div class="warnbox"><b>Good to know</b><ul style="margin:4px 0 0;padding-left:18px">${g.quirks.map(q => `<li>${esc(q)}</li>`).join('')}</ul></div>` : ''}
       <details style="margin-top:10px"><summary>All directions for ${esc(g.name)}</summary>${howTo(g, Object.keys(G.actions))}</details>
       ${g.docs.length ? `<p class="small muted" style="margin-top:8px">Documentation: ${g.docs.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">${esc(d.label)}</a>`).join(' · ')}</p>` : ''}`
-    : '<p class="muted small" style="margin-top:8px">Pick your controller to get its exact menu paths next to each checklist below.</p>';
+    : S.ctrl === 'other' ? '<p class="muted small" style="margin-top:8px">zwlens has no guide for your controller yet, so the advice below is general. Look for the same actions (rebuild routes, remove failed node, exclusion) in its manual.</p>'
+    : '<p class="muted small" style="margin-top:8px">Pick your controller (here or on the Nodes tab) to see its exact menu paths under every finding below.</p>';
   return `<div class="panel"><h2>Your controller</h2>
-    <div class="bar" style="margin:0"><select id="ctrl"><option value="">Choose your controller…</option>${G.controllers.map(c => `<option value="${esc(c.id)}" ${c.id === S.ctrl ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>
+    <div class="bar" style="margin:0"><select id="ctrl" aria-label="Controller model">${ctrlOptions('Choose your controller…')}</select>
     <span class="muted small">Directions are quoted from the makers' documentation; menus can change with firmware.</span></div>${body}</div>`;
 }
 
@@ -290,6 +311,7 @@ function library() {
       <details ${e.hits.length ? 'open' : ''}><summary class="small muted">Causes and fixes</summary>
         ${e.causes.length ? `<div class="small muted" style="margin-top:6px">Likely causes</div><ul>${e.causes.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
         ${e.fixes.length ? `<div class="small muted" style="margin-top:6px">What to do</div><ul>${e.fixes.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+        ${hubStep(e.action)}
         ${e.sources.length ? `<div class="src muted">Sources: ${e.sources.map((u, i) => /^https:\/\//.test(u) ? `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">[${i + 1}]</a>` : esc(u)).join(' ')}</div>` : ''}
       </details></div>`).join('');
   return `<div class="panel"><h2>Known-issue library</h2>
@@ -323,7 +345,11 @@ function nodes() {
       <span class="muted small">Leave everything empty to remove the alias.</span></div></td></tr>` : '';
     return row + edit;
   }).join('');
-  return `<div class="bar"><span class="muted grow">Every node, categorised by what its traffic shows. Aliases are saved to <span class="mono">${esc(A.alias_file)}</span> and reused for every capture.</span>
+  const g = ctrlGuide();
+  return `<div class="panel"><div class="bar" style="margin:0"><label for="nodectrl"><b>Controller model</b></label>
+      <select id="nodectrl">${ctrlOptions('Choose your controller model…')}</select>
+      <span class="muted small grow">${g ? `Troubleshooting shows how to carry out each fix on ${esc(g.name)}.` : S.ctrl === 'other' ? 'No guide for this controller yet; troubleshooting shows general advice.' : 'Choose it once and every troubleshooting step shows the exact menus for your hub.'} Saved for this network.</span></div></div>
+    <div class="bar"><span class="muted grow">Every node, categorised by what its traffic shows. Aliases are saved to <span class="mono">${esc(A.alias_file)}</span> and reused for every capture.</span>
     ${A.network.foreign_nodes ? `<label class="small"><input type="checkbox" data-act="foreign" ${S.foreign ? 'checked' : ''}> Show ${A.network.foreign_nodes} nodes from other networks</label>` : ''}</div>
     <div class="panel tablewrap"><table><thead><tr><th>Node</th><th>Type</th><th>Role</th><th>Power</th><th>Security</th><th>Health</th><th>Traffic</th>
     <th class="num">Signal</th><th class="num">Sent</th><th class="num">Received</th><th class="num">Undelivered</th><th>Route from controller</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -477,7 +503,7 @@ document.addEventListener('change', async ev => {
     if (el.id === 'kcat') { S.kcat = el.value; render(); }
     if (el.id === 'chip') { await post('/api/settings', { chip: el.value }); toast('Applies to .zlf files you load from now on'); await load(); }
     if (el.id === 'zregion') { await post('/api/live/region', { id: +el.value }); toast('Switching region…'); setTimeout(() => load().catch(() => {}), 1500); }
-    if (el.id === 'ctrl') { S.ctrl = el.value; try { localStorage.setItem('zwlens.ctrl', S.ctrl); } catch (e) { /* ignore */ } render(); }
+    if (el.id === 'ctrl' || el.id === 'nodectrl') await saveCtrl(el.value);
     if (el.id === 'cnode') { S.cnode = el.value; render(); }
     if (el.id === 'cstatus') { S.cstatus = el.value; render(); }
     if (el.id === 'fnode') { S.fnode = el.value; S.foff = 0; await loadFrames(); }

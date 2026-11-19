@@ -11,6 +11,7 @@ from . import __version__
 from .aliases import AliasStore
 from .analysis import analyze, report_markdown
 from .controllers import catalogue as controller_catalogue
+from .controllers import guide as controller_guide
 from .help_content import help_data
 from .live import LiveClient
 from .parsers import parse_bytes
@@ -121,6 +122,14 @@ class Session:
             out["aliases"] = self.aliases.data
             out["alias_file"] = str(self.aliases.path)
             out["guides"] = controller_catalogue()
+            home, ctrl = a["network"].get("home") or "", a["network"].get("controller")
+            model = self.aliases.model(home, ctrl)
+            g = controller_guide(model)
+            out["controller_model"] = model if (g or model == "other") else None
+            out["controller_key"] = {"home": home or "*", "node": ctrl if ctrl is not None else 0}
+            if g:
+                out["nodes"] = [dict(n, type=g["name"]) if n["controller"] and not n["foreign"] else n
+                                for n in a["nodes"]]
             out["settings"] = {"chip": self.chip}
             out["app_version"] = __version__
         return out
@@ -151,6 +160,12 @@ class Session:
                    or t in " ".join(f.encap).lower() or t in (f.text or "").lower()]
         return {"total": len(sel), "offset": offset,
                 "frames": [f.to_dict() for f in sel[offset:offset + limit]]}
+
+
+def valid_key(home: str, node: str) -> bool:
+    """Alias keys are '<8 hex digit home id or *>:<node id>'."""
+    return node.isdigit() and int(node) <= 4095 and (
+        home == "*" or (len(home) == 8 and all(ch in "0123456789abcdef" for ch in home)))
 
 
 def make_handler(session: Session, allowed_hosts: set | None):
@@ -243,11 +258,19 @@ def make_handler(session: Session, allowed_hosts: set | None):
                 elif u.path == "/api/alias":
                     key = str(data["key"])
                     home, _, node = key.rpartition(":")
-                    if not node.isdigit() or not (home == "*" or (len(home) == 8 and all(
-                            ch in "0123456789abcdef" for ch in home))):
+                    if not valid_key(home, node):
                         return self._json({"error": "bad alias key"}, 400)
                     session.aliases.set(key, str(data.get("name", "")), str(data.get("location", "")),
                                         str(data.get("notes", "")))
+                    session.bump()
+                elif u.path == "/api/controller":
+                    home, node = str(data.get("home") or "*"), str(data.get("node", 0))
+                    model = str(data.get("model") or "")
+                    if not valid_key(home, node):
+                        return self._json({"error": "bad network or node"}, 400)
+                    if model and model != "other" and controller_guide(model) is None:
+                        return self._json({"error": "unknown controller model"}, 400)
+                    session.aliases.update(f"{home}:{node}", model=model)
                     session.bump()
                 elif u.path == "/api/live/start":
                     freq = data.get("frequency")

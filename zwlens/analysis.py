@@ -5,6 +5,7 @@ from collections import Counter, defaultdict
 from statistics import median
 
 from .cc import DEVICE_TYPES, PLUMBING
+from .controllers import action_for
 from .knowledge import evaluate as evaluate_catalog
 from .model import BROADCAST, Frame
 
@@ -478,8 +479,9 @@ def _issue(iid, title, what, findings, steps, ok_text):
             if findings else ok_text}
 
 
-def _finding(sev, text, fix, node=None, frames=None):
-    return {"severity": sev, "text": text, "fix": fix, "node": node, "frames": (frames or [])[:20]}
+def _finding(sev, text, fix, node=None, frames=None, action=None):
+    return {"severity": sev, "text": text, "fix": fix, "node": node, "frames": (frames or [])[:20],
+            "action": (action_for(fix) if action is None else action) or None}
 
 
 def _unreachable(cats, sniffed):
@@ -542,7 +544,7 @@ def _signal(cats, noise, sniffed, rssi_trusted=True):
                             f"({min(levels):.0f} to {max(levels):.0f} dBm), so these levels describe the "
                             "sniffer, not the links.",
                             "Move the sniffer next to the controller, or treat the numbers as relative only "
-                            "(Zniffer RSSI conversion is approximate). Per-node weak-signal checks were skipped."))
+                            "(Zniffer RSSI conversion is approximate). Per-node weak-signal checks were skipped.", action=""))
     if floor is not None and floor > NOISE_HIGH:
         out.append(_finding("crit" if floor > -75 else "warn",
                             f"The background noise floor is {floor:.0f} dBm (a quiet site is below -95 dBm).",
@@ -649,7 +651,7 @@ def _congestion(cats, net, msgs):
         out.append(_finding("crit" if net["airtime_pct"] > 15 else "warn",
                             f"The channel was busy {net['airtime_pct']:.1f}% of the time.",
                             "Z-Wave is a low-duty-cycle network; above a few percent, collisions and delays "
-                            "rise quickly. Cut down the chatty nodes listed here."))
+                            "rise quickly. Cut down the chatty nodes listed here.", action="config"))
     for c in cats:
         n = c["_n"]
         if c["foreign"] or c["controller"]:
@@ -668,7 +670,7 @@ def _congestion(cats, net, msgs):
             out.append(_finding("warn", f"Commands to {c['name']} take a median of {_med(n['tx_ms']):.0f} ms "
                                 f"to be acknowledged ({len(slow)} took over a second).",
                                 "Slow acknowledgements come from retries or a busy channel. Check this node's "
-                                "route and whether a chatty neighbour is talking over it.", c["key"]))
+                                "route and whether a chatty neighbour is talking over it.", c["key"], action="routes"))
     jammed = [m.first.idx for m in msgs if m.first.tx_status == "Fail"]
     if jammed:
         out.append(_finding("warn", f"{len(jammed)} transmission(s) failed with status 'Fail': the controller "
@@ -710,7 +712,7 @@ def _security(cats):
         if n["sos"] >= 2:
             out.append(_finding("warn", f"{c['name']} reported losing S2 synchronisation {n['sos']} times.",
                                 "Occasional resyncs are normal after lost frames; repeated ones mean frames to "
-                                "this node are being dropped. Fix its link quality first.", c["key"]))
+                                "this node are being dropped. Fix its link quality first.", c["key"], action="routes"))
         bad = n["events"]["nonce_error"] + n["events"]["decode_error"]
         if bad:
             out.append(_finding("warn", f"{c['name']}: {bad} message(s) could not be decrypted or had no valid nonce.",
@@ -724,7 +726,7 @@ def _security(cats):
                                 c["key"]))
     if all_total >= 20 and s0_total / all_total > 0.4:
         out.append(_finding("warn", f"{s0_total / all_total:.0%} of application traffic uses S0.",
-                            "A network dominated by S0 is slow by design. Plan to migrate the busiest devices."))
+                            "A network dominated by S0 is slow by design. Plan to migrate the busiest devices.", action="exclude"))
     steps = [
         "Use the Nodes tab's Security column to see which devices use S2, S0 or nothing.",
         "Locks, garage doors and alarm devices must use S2 (or at least S0). Everything else can use S2 or no security.",
@@ -798,7 +800,7 @@ def _suggestions(issues, net, cats):
         for f in iss["findings"]:
             if f["severity"] in ("crit", "warn"):
                 out.append({"severity": f["severity"], "issue": iss["id"], "area": iss["title"],
-                            "why": f["text"], "do": f["fix"], "node": f["node"]})
+                            "why": f["text"], "do": f["fix"], "node": f["node"], "action": f["action"]})
     out.sort(key=lambda s: -SEV[s["severity"]])
     general = []
     repeaters = sum(1 for c in cats if not c["foreign"] and c["power"] == "Mains" and not c["controller"])
@@ -822,11 +824,13 @@ def _suggestions(issues, net, cats):
                         "Rate, airtime and latency analysis is disabled. Configure your SDR tool to print a "
                         "timestamp per frame."))
     for sev, area, why, do in general:
-        out.append({"severity": sev, "issue": None, "area": area, "why": why, "do": do, "node": None})
+        out.append({"severity": sev, "issue": None, "area": area, "why": why, "do": do, "node": None,
+                    "action": action_for(do)})
     if not out:
         out.append({"severity": "ok", "issue": None, "area": "All clear",
                     "why": "None of the five troubleshooters found a problem in this capture.",
-                    "do": "Capture for longer, or during the time problems occur, to dig deeper.", "node": None})
+                    "do": "Capture for longer, or during the time problems occur, to dig deeper.", "node": None,
+                    "action": None})
     return out
 
 
@@ -863,7 +867,7 @@ def analyze(frames: list, namer=None, meta: dict | None = None) -> dict:
     catalog = evaluate_catalog(frames, msgs, cats, net, nm)
     suggestions = _suggestions(issues, net, cats)
     extra = [{"severity": h["severity"], "issue": "kb-" + e["id"], "area": e["title"], "why": h["text"],
-              "do": e["fixes"][0] if e["fixes"] else "", "node": h["node"]}
+              "do": e["fixes"][0] if e["fixes"] else "", "node": h["node"], "action": e["action"]}
              for e in catalog for h in e["hits"] if h["severity"] in ("crit", "warn")]
     if extra:
         suggestions = [s for s in suggestions if s["severity"] != "ok"] + extra

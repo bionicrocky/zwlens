@@ -42,14 +42,33 @@ class AliasStore:
         return (entry or {}).get("name") or None
 
     def set(self, key: str, name: str = "", location: str = "", notes: str = "") -> None:
-        entry = {k: v.strip()[:200] for k, v in (("name", name), ("location", location), ("notes", notes))
-                 if v and v.strip()}
+        """Set a node's alias, location and notes. Other fields on the entry (such as model) are kept."""
+        self.update(key, name=name, location=location, notes=notes)
+
+    def update(self, key: str, **fields) -> None:
+        """Merge fields into an entry. An empty value removes that field; an empty entry is deleted."""
         with self._lock:
+            entry = dict(self.data.get(key, {}))
+            for k, v in fields.items():
+                v = (v or "").strip()[:200]
+                if v:
+                    entry[k] = v
+                else:
+                    entry.pop(k, None)
             if entry:
                 self.data[key] = entry
             else:
                 self.data.pop(key, None)
             self._save()
+
+    def model(self, home: str, controller: int | None) -> str | None:
+        """The controller model saved for a network: on its controller's entry, or on node 0 when the
+        controller was not identified when it was chosen."""
+        for node in ([controller] if controller is not None else []) + [0]:
+            m = (self.data.get(f"{home or '*'}:{node}") or {}).get("model")
+            if m:
+                return m
+        return (self.data.get("*:0") or {}).get("model") or None
 
     def _save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)

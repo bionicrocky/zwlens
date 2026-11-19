@@ -11,12 +11,20 @@ import re
 from collections import Counter, defaultdict
 from statistics import median
 
+from .controllers import action_for
 from .kb_entries import ENTRIES
 from .model import BROADCAST
 
 SNIFFED = ("zniffer", "sdr")
 BY_ID = {e["id"]: e for e in ENTRIES}
 LOG_RULES = [(re.compile(rx, re.I), e["id"]) for e in ENTRIES for rx in e.get("log", [])]
+# Fallback when an entry's advice does not name a recognisable controller action.
+CATEGORY_ACTION = {
+    "rf": "routes", "routing": "rebuild", "controller": "firmware", "power-sleep": "config",
+    "security": "exclude", "inclusion-interview": "include", "application-config": "config",
+    "firmware": "firmware", "long-range": "include", "capacity-traffic": "config",
+    "hardware-environment": "routes",
+}
 CATEGORIES = {
     "rf": "Radio and interference", "routing": "Routing and mesh", "controller": "Controller",
     "power-sleep": "Battery and sleep", "security": "Security", "inclusion-interview": "Inclusion and interview",
@@ -455,6 +463,8 @@ def evaluate(frames, msgs, cats, net, nm) -> list[dict]:
             "category_name": CATEGORIES.get(e["category"], e["category"]),
             "what": e["what"], "causes": e.get("causes", []), "fixes": e.get("fixes", []),
             "sources": e.get("sources", []), "hits": hits,
+            "action": e.get("action") or action_for(" ".join(e.get("fixes", [])[:1]))
+            or CATEGORY_ACTION.get(e["category"]),
             "status": "detected" if hits else ("clear" if detectable else "manual"),
             "how": ("traffic and logs" if fn and e.get("log") else "traffic" if fn else "controller logs" if e.get("log") else "not visible in traffic"),
         })
