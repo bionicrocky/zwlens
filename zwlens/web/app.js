@@ -1,4 +1,11 @@
 'use strict';
+// Phone layout: narrow screens, or a phone/tablet browser in portrait. Sets html.phone (see style.css).
+(() => {
+  const narrow = matchMedia('(max-width: 700px)');
+  const mobileUA = navigator.userAgentData?.mobile ?? /Mobi|Android|iPhone|iPod/i.test(navigator.userAgent);
+  const set = () => document.documentElement.classList.toggle('phone', narrow.matches || (mobileUA && innerWidth < 900));
+  set(); narrow.addEventListener('change', set); addEventListener('resize', set);
+})();
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const SEVLABEL = { ok: 'OK', info: 'Note', warn: 'Warning', crit: 'Critical', fail: 'Failed' };
@@ -73,7 +80,7 @@ function render() {
   const nCrit = all.filter(f => f.severity === 'crit').length, nWarn = all.filter(f => f.severity === 'warn').length;
   $('#tabs [data-tab=troubleshoot]').innerHTML = 'Troubleshoot' + (nCrit ? `<span class="count">${nCrit}</span>` : nWarn ? `<span class="count warn">${nWarn}</span>` : '');
   const live = A.live;
-  $('#status').innerHTML = (live ? pill(live.state === 'connected' ? 'ok' : live.state === 'connecting' ? 'info' : 'crit', 'Live: ' + live.state) : '')
+  $('#status').innerHTML = (live ? pill(live.state === 'connected' ? 'ok' : live.state === 'connecting' ? 'info' : 'crit', (document.documentElement.classList.contains('phone') && live.state === 'connected' ? 'Live' : 'Live: ' + live.state)) : '')
     + `<span>${A.network.frames} frames</span>`;
   if (S.tab === 'help') { if (!$('#view > .help')) $('#view').innerHTML = help(); return; }  // help does not depend on the capture
   const empty = !A.network.frames;

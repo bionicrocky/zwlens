@@ -231,3 +231,36 @@ button.qhelp:hover { background: var(--accent); color: var(--accent-ink); border
   .help-select { display: block; }
   .help-body { padding: 16px; font-size: 14px; }
 }
+
+/* ---- phones: html.phone is set by app.js from screen width and the browser's user agent ---- */
+html.phone header.top { padding: 0 12px; gap: 8px; flex-wrap: nowrap; padding-top: env(safe-area-inset-top); }
+html.phone .brand { font-size: 16px; gap: 7px; padding: 8px 0; }
+html.phone .brand .logo { width: 22px; height: 22px; }
+html.phone .brand small { display: none; }
+html.phone #status { gap: 6px; font-size: 11px; white-space: nowrap; }
+html.phone #status .pill { font-size: 11px; }
+html.phone nav { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; overflow: visible; gap: 0;
+  background: var(--panel); border-top: 1px solid var(--line); padding-bottom: env(safe-area-inset-bottom);
+  box-shadow: 0 -4px 16px rgb(0 0 0 / .08); }
+html.phone nav button { flex: 1 1 0; min-width: 0; min-height: 56px; padding: 6px 0 4px; border-bottom: 0; border-top: 2px solid transparent;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; position: relative;
+  font-size: 0; -webkit-tap-highlight-color: transparent; }
+html.phone nav button::before { content: ""; width: 22px; height: 22px; background: currentColor;
+  -webkit-mask: no-repeat center / contain; mask: no-repeat center / contain; }
+html.phone nav button::after { content: attr(data-short); font-size: 10.5px; font-weight: 600; line-height: 1; }
+html.phone nav button.on { border-top-color: var(--accent); }
+html.phone nav button .count { position: absolute; top: 3px; left: calc(50% + 6px); margin: 0; font-size: 10px; line-height: 16px; min-width: 16px; padding: 0 4px; }
+html.phone main { padding: 12px 12px calc(76px + env(safe-area-inset-bottom)); }
+html.phone #toast { bottom: calc(72px + env(safe-area-inset-bottom)); }
+html.phone .cards { grid-template-columns: 1fr 1fr; gap: 8px; }
+html.phone .card { padding: 10px 12px; }
+html.phone .card .v { font-size: 20px; }
+html.phone .card.hero { grid-column: span 2; }
+html.phone .panel { padding: 12px 14px; }
+html.phone nav button[data-tab=overview]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z'/%3E%3C/svg%3E"); }
+html.phone nav button[data-tab=conversations]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 5h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z'/%3E%3Cpath d='M18 9h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-1v3l-4-3h-3'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 5h12a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H9l-4 3v-3H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z'/%3E%3Cpath d='M18 9h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-1v3l-4-3h-3'/%3E%3C/svg%3E"); }
+html.phone nav button[data-tab=troubleshoot]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l10 18H2z'/%3E%3Cpath d='M12 10v5M12 18v.5'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 3l10 18H2z'/%3E%3Cpath d='M12 10v5M12 18v.5'/%3E%3C/svg%3E"); }
+html.phone nav button[data-tab=nodes]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='5' r='2.5'/%3E%3Ccircle cx='5' cy='18' r='2.5'/%3E%3Ccircle cx='19' cy='18' r='2.5'/%3E%3Cpath d='M11 7.2L6.2 15.8M13 7.2l4.8 8.6M7.5 18h9'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='5' r='2.5'/%3E%3Ccircle cx='5' cy='18' r='2.5'/%3E%3Ccircle cx='19' cy='18' r='2.5'/%3E%3Cpath d='M11 7.2L6.2 15.8M13 7.2l4.8 8.6M7.5 18h9'/%3E%3C/svg%3E"); }
+html.phone nav button[data-tab=frames]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6h16M4 12h16M4 18h10'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6h16M4 12h16M4 18h10'/%3E%3C/svg%3E"); }
+html.phone nav button[data-tab=data]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='12' cy='5.5' rx='8' ry='3'/%3E%3Cpath d='M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cellipse cx='12' cy='5.5' rx='8' ry='3'/%3E%3Cpath d='M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3'/%3E%3C/svg%3E"); }
+html.phone nav button[data-tab=help]::before { -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 2-2.8 2.5-2.8 4.2M12 17.6v.4'/%3E%3C/svg%3E"); mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9.5'/%3E%3Cpath d='M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 2-2.8 2.5-2.8 4.2M12 17.6v.4'/%3E%3C/svg%3E"); }
