@@ -12,6 +12,7 @@ jobs:
   test:
     name: ${{ matrix.os }} / Python ${{ matrix.python }}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
     strategy:
       fail-fast: false
       matrix:
@@ -19,7 +20,7 @@ jobs:
         python: ["3.13"]
         include:
           # The oldest Python zwlens supports, on the two platforms where it is easy to get.
-          - os: ubuntu-latest
+          - os: ubuntu-22.04  # newer Ubuntu runner images no longer offer Python 3.9
             python: "3.9"
           - os: windows-latest
             python: "3.9"

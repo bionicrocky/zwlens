@@ -80,14 +80,19 @@ class _PosixPort:
             raise SerialError("the device was disconnected")
         return data
 
-    def write(self, data: bytes) -> None:
+    def write(self, data: bytes, timeout: float = 3.0) -> None:
         import select
+        deadline = time.monotonic() + timeout
         while data:
             try:
                 n = os.write(self.fd, data)
                 data = data[n:]
             except BlockingIOError:
-                select.select([], [self.fd], [], 1.0)
+                # A device that stops reading must not hang the capture thread forever.
+                left = deadline - time.monotonic()
+                if left <= 0:
+                    raise SerialError("the device stopped accepting data") from None
+                select.select([], [self.fd], [], min(left, 0.5))
 
     def close(self) -> None:
         try:

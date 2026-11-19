@@ -1,5 +1,7 @@
 """Run with: python -m unittest discover -s tests"""
+import faulthandler
 import json
+import os
 import socket
 import struct
 import sys
@@ -8,6 +10,9 @@ import threading
 import unittest
 import urllib.request
 from pathlib import Path
+
+if os.environ.get("CI"):  # on CI, a hung test prints every thread's stack and exits instead of stalling
+    faulthandler.dump_traceback_later(300, exit=True)
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
