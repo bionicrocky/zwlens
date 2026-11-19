@@ -550,6 +550,8 @@ class ZnifferLive(unittest.TestCase):
                     chunk = os.read(master, 256)
                 except OSError:
                     return
+                if not chunk:
+                    return
                 for cmd in stream.feed(chunk):
                     fn = cmd[1]
                     seen.append(fn)
@@ -560,7 +562,8 @@ class ZnifferLive(unittest.TestCase):
                             rid = {"9.6k": 0, "40k": 1, "100k": 2}[rate]
                             os.write(master, bytes([0x21, 1, 0, 0, rid, 0, 49, 0x21, 3, len(mpdu)]) + mpdu)
 
-        threading.Thread(target=stick, daemon=True).start()
+        stick_thread = threading.Thread(target=stick, daemon=True)
+        stick_thread.start()
         with tempfile.TemporaryDirectory() as d:
             session = Session(AliasStore(Path(d) / "a.json"))
             session.start_live(os.ttyname(slave))
@@ -592,7 +595,13 @@ class ZnifferLive(unittest.TestCase):
             self.assertEqual(seen[0], 5)        # stop first, in case it was already capturing
             self.assertEqual(seen[-1], 5)       # and stop on the way out
             self.assertIn(4, seen)
-        os.close(master); os.close(slave)
+        # Closing the slave ends the stick thread's read (end-of-file on macOS, an error on
+        # Linux). The master is closed only after that: macOS blocks a close() of a
+        # pseudo-terminal master for as long as another thread is reading it.
+        os.close(slave)
+        stick_thread.join(5)
+        self.assertFalse(stick_thread.is_alive())
+        os.close(master)
 
     @unittest.skipUnless(hasattr(__import__("os"), "openpty"), "needs a pseudo-terminal")
     def test_port_in_use_is_refused_without_writing(self):
