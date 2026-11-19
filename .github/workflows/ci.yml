@@ -25,6 +25,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         python: ["3.9", "3.13"]
+        # GitHub's newest Ubuntu image has no Python 3.9 build, so the oldest
+        # supported Python is tested on Ubuntu 24.04 instead.
+        exclude:
+          - os: ubuntu-latest
+            python: "3.9"
+        include:
+          - os: ubuntu-24.04
+            python: "3.9"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
