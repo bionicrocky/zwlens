@@ -66,7 +66,7 @@ SECTIONS = [
                 "**Open a saved file**: a Zniffer capture (.zlf), a Z-Wave JS driver log, or SDR output. "
                 "See [[files]].",
             ],
-            "No hardware yet? On the **Data** tab press **Sample Zniffer capture** to explore the app with "
+            "No hardware yet? On the **Sources** tab press **Sample Zniffer capture** to explore the app with "
             "invented traffic.",
             "Once traffic is loaded, start on **Overview**: the [[health-score|health score]] and the "
             "suggestions list tell you where to look. Each suggestion links to a troubleshooter with a "
@@ -76,13 +76,13 @@ SECTIONS = [
     },
     {
         "id": "live-zniffer", "group": "use", "title": "Capturing live from a Zniffer stick",
-        "summary": "Plug in a stick, pick its port on the Data tab, press Capture.",
+        "summary": "Plug in a stick, pick its port on the Sources tab, press Capture.",
         "body": [
             "A Zniffer is a Z-Wave USB stick running special firmware that listens to everything on air "
             "instead of joining your network. zwlens talks to it directly; no other capture software is "
             "needed. Why you need a separate stick is explained in [[zniffer]].",
             [
-                "Open **Data** and find *Live from a Zniffer stick*.",
+                "Open **Sources** and find *Live from a Zniffer stick*.",
                 "Pick the stick's port from the list (Linux: `/dev/ttyACM0` or `/dev/ttyUSB0`; Windows: `COM3` "
                 "and so on; macOS: `/dev/cu.usbmodem…`). Press **Rescan** if you plugged it in after opening "
                 "the page.",
@@ -111,7 +111,7 @@ SECTIONS = [
             "zwlens can connect to its server and follow the driver log live. Nothing is changed on your "
             "controller; the connection is read-only.",
             [
-                "Open **Data** and find *Live from a controller*.",
+                "Open **Sources** and find *Live from a controller*.",
                 "Enter the server address, usually `ws://localhost:3000` or `ws://<your-server>:3000`, "
                 "and press **Connect**.",
                 "In Z-Wave JS UI or the add-on, set the driver **log level to debug**. At lower levels the log "
@@ -137,7 +137,7 @@ SECTIONS = [
             ],
             "Several files can be loaded at once; they are analysed together. **Remove** drops one, "
             "**Clear all** drops everything (your [[aliases]] are kept).",
-            "**Signal conversion** on the Data tab tells zwlens which chip recorded your .zlf files "
+            "**Signal conversion** on the Sources tab tells zwlens which chip recorded your .zlf files "
             "(700/800-series or 500-series). The two report signal strength on different scales; the wrong "
             "setting makes every signal look too strong or too weak. It applies to files loaded after you "
             "change it.",
@@ -241,7 +241,7 @@ SECTIONS = [
         "links": [],
     },
     {
-        "id": "tab-data", "group": "use", "title": "The Data tab",
+        "id": "tab-data", "group": "use", "title": "The Sources tab",
         "summary": "Load files, start or stop live capture, save and export.",
         "body": [
             "Everything about getting traffic in and out: [[files|loading files]] and sample data, "
@@ -281,7 +281,7 @@ SECTIONS = [
         "id": "saving", "group": "use", "title": "Saving captures and exporting reports",
         "summary": "Keep a live capture as .zlf; export a report or the raw analysis.",
         "body": [
-            "Buttons on the **Data** tab, next to *Loaded captures*:",
+            "Buttons on the **Sources** tab, next to *Loaded captures*:",
             [
                 "**Save as .zlf** saves the radio frames (from a Zniffer or SDR) as a Zniffer capture file. "
                 "Open it later in zwlens, Z-Wave JS UI or the Silicon Labs Zniffer. Log-only traffic is not "

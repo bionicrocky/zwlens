@@ -47,6 +47,7 @@ function fmtDur(s) {
   return (s / 3600).toFixed(1) + ' h';
 }
 const nameOf = (home, id) => id === 255 ? 'Broadcast' : (names[(home || '') + ':' + id] || 'Node ' + id);
+const plural = (n, w) => `${n.toLocaleString()} ${w}${n === 1 ? '' : 's'}`;
 const pct = v => v == null ? 'n/a' : v + '%';
 
 async function load() {
@@ -74,42 +75,68 @@ async function loadFrames(rerender = true) {
   if (rerender) render();
 }
 
+// Each tab has its own address (#overview, #sources, ...), so Back, Refresh and bookmarks keep your place.
+const TAB_HASH = { overview: 'overview', troubleshoot: 'troubleshoot', conversations: 'conversations', nodes: 'nodes', frames: 'frames', data: 'sources' };
+const hashTab = () => { const h = location.hash.slice(1); return Object.keys(TAB_HASH).find(t => TAB_HASH[t] === h) || null; };
 function render() {
-  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === S.tab));
+  if (S.tab !== 'help' && location.hash !== '#' + TAB_HASH[S.tab]) history[location.hash ? 'pushState' : 'replaceState'](null, '', '#' + TAB_HASH[S.tab]);
+  document.querySelectorAll('#tabs button').forEach(b => { const on = b.dataset.tab === S.tab; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
   const all = [...A.issues.flatMap(i => i.findings), ...A.catalog.flatMap(e => e.hits)];
   const nCrit = all.filter(f => f.severity === 'crit').length, nWarn = all.filter(f => f.severity === 'warn').length;
   $('#tabs [data-tab=troubleshoot]').innerHTML = 'Troubleshoot' + (nCrit ? `<span class="count">${nCrit}</span>` : nWarn ? `<span class="count warn">${nWarn}</span>` : '');
   const live = A.live;
-  $('#status').innerHTML = (live ? pill(live.state === 'connected' ? 'ok' : live.state === 'connecting' ? 'info' : 'crit', (document.documentElement.classList.contains('phone') && live.state === 'connected' ? 'Live' : 'Live: ' + live.state)) : '')
-    + `<span>${A.network.frames} frames</span>`;
+  const ls = live && (live.state === 'connected' ? 'ok' : live.state === 'connecting' ? 'info' : 'crit');
+  $('#status').innerHTML = (live ? `<button class="link live ${ls}" data-act="tab" data-tab="data" title="${esc(live.info || live.url || '')}"><i></i>${live.state === 'connected' ? 'Live' : 'Live: ' + esc(live.state)}</button>` : '')
+    + `<span>${A.network.frames.toLocaleString()} frames</span>`;
   if (S.tab === 'help') { if (!$('#view > .help')) $('#view').innerHTML = help(); return; }  // help does not depend on the capture
   const empty = !A.network.frames;
   const views = { overview, conversations, troubleshoot, nodes, frames, data };
   $('#view').innerHTML = (empty && S.tab !== 'data')
-    ? `<div class="panel empty">${LOGO}<h3>No capture loaded</h3><p>Capture live from a Zniffer stick, add a log or capture file, or connect to a live controller.</p><button class="btn primary" data-act="tab" data-tab="data">Add data</button> <button class="btn" data-act="sample" data-kind="zniffer">Try with sample data</button></div>`
+    ? `<div class="panel empty">${LOGO}<h3>Nothing captured yet</h3><p>Start a live capture from a Zniffer stick, open a log or capture file, or follow a running controller.</p><button class="btn primary" data-act="tab" data-tab="data">Choose a source</button> <button class="btn" data-act="sample" data-kind="zniffer">Try with sample data</button></div>`
     : views[S.tab]();
 }
 
 // ---------------------------------------------------------------- overview
+function facts(obj) {
+  const e = Object.entries(obj || {});
+  return e.length ? e.map(([k, v]) => `<span class="fact">${esc(k)} <b>${esc(v)}</b></span>`).join('<span class="sepdot"> · </span>') : '<span class="muted">n/a</span>';
+}
 function chips(obj) {
   return `<div class="chips">${Object.entries(obj || {}).map(([k, v]) => `<span class="pill ${HEALTH[k] || 'plain'}">${esc(k)}: ${esc(v)}</span>`).join('') || '<span class="muted">n/a</span>'}</div>`;
 }
 function overview() {
   const n = A.network;
   const sev = n.score >= 85 ? 'ok' : n.score >= 60 ? 'warn' : 'crit';
-  // each card jumps to the view that explains its number; status pre-filters Conversations
-  const card = (v, k, tab, status = '', hint = '') => `<button class="card go" data-act="card" data-tab="${tab}" data-status="${status}" title="${esc(hint)}"><div class="v">${esc(v)}</div><div class="k">${esc(k)}</div></button>`;
-  const sug = A.suggestions.map((s, i) => `<div class="finding">${pill(s.severity)} <b>${esc(s.area)}</b><div>${esc(s.why)}</div><div class="fix">${esc(s.do)}</div>${hubStep(s.action)}
-    ${s.issue ? `<button class="link small" data-act="issue" data-id="${esc(s.issue)}">${s.issue.startsWith('kb-') ? 'Causes and fixes' : 'Open troubleshooter'}</button>` : ''}</div>`).join('');
+  // Each number opens the view that explains it; status pre-filters Conversations.
+  const stat = (v, unit, k, tab, status, hint, tone = '') => `<button class="stat ${tone}" data-act="card" data-tab="${tab}" data-status="${status}" title="${esc(hint)}"><div class="v">${esc(v)}${unit ? `<small>${esc(unit)}</small>` : ''}</div><div class="k">${esc(k)}</div></button>`;
+  const tone = (v, meh, bad) => v == null ? '' : v >= bad ? 'bad' : v >= meh ? 'meh' : '';
+  const busy = n.airtime_pct != null;
+  // Group suggestions that share a problem, so five weak nodes read as one item with five nodes.
+  const groups = [];
+  for (const s of A.suggestions) {
+    const key = s.area + '|' + (s.issue || '');  // suggestions arrive worst first, so a group keeps its worst severity
+    let g = groups.find(x => x.key === key);
+    if (!g) groups.push(g = { key, ...s, whys: [] });
+    g.whys.push(s.why);
+  }
+  const sug = groups.map(g => `<div class="sug"><div class="t">${pill(g.severity)} <b>${esc(g.area)}</b>${g.whys.length > 1 ? `<span class="n">${g.whys.length} findings</span>` : ''}</div>
+    ${g.whys.length > 1 ? `<ul>${g.whys.slice(0, 4).map(w => `<li>${esc(w)}</li>`).join('')}${g.whys.length > 4 ? `<li class="muted">and ${g.whys.length - 4} more</li>` : ''}</ul>` : `<div>${esc(g.why)}</div>`}
+    <div class="fix">${esc(g.do)}</div>${hubStep(g.action)}
+    ${g.issue ? `<button class="link small" data-act="issue" data-id="${esc(g.issue)}">${g.issue.startsWith('kb-') ? 'Causes and fixes' : 'Open troubleshooter'} →</button>` : ''}</div>`).join('');
   return `
-  <div class="grid cards">
-    <button class="card hero go" data-act="card" data-tab="troubleshoot" data-status="" title="See what is lowering the score"><svg class="ring" viewBox="0 0 72 72" role="img" aria-label="Health score ${n.score} of 100"><circle class="track" cx="36" cy="36" r="30"/><circle class="val" cx="36" cy="36" r="30" style="stroke:var(--${sev})" stroke-dasharray="${(n.score / 100 * 188.5).toFixed(1)} 188.5"/><text x="36" y="43" text-anchor="middle">${n.score}</text></svg>
-      <div><div class="v" style="color:var(--${sev})">${esc(n.grade)}</div><div class="k">Network health score</div></div></button>
-    ${card(n.nodes, 'Nodes', 'nodes', '', 'Show every node')}${card(n.messages, 'Messages', 'frames', '', 'Show the frames')}${card(A.conv_total, 'Conversations', 'conversations', '', 'Show all conversations')}
-    ${card(pct(n.fail_pct), 'Not delivered', 'conversations', 'fail', 'Show failed conversations')}${card(pct(n.retx_pct), 'Needed a retry', 'conversations', 'warn', 'Show conversations with retries')}
-    ${card(n.airtime_pct != null ? n.airtime_pct + '%' : (n.msgs_per_min != null ? n.msgs_per_min + '/min' : 'n/a'), n.airtime_pct != null ? 'Channel busy' : 'Message rate', 'frames', '', 'Show the frames')}
-    ${card(n.noise_floor != null ? n.noise_floor + ' dBm' : 'n/a', 'Noise floor', 'troubleshoot', '', 'Interference and range checks')}
-  </div>
+  <section class="panel summary">
+    <button class="score" data-act="card" data-tab="troubleshoot" data-status="" title="See what is lowering the score"><svg class="ring" viewBox="0 0 72 72" role="img" aria-label="Health score ${n.score} of 100"><circle class="track" cx="36" cy="36" r="30"/>${n.score > 0 ? `<circle class="val" cx="36" cy="36" r="30" style="stroke:var(--${sev})" stroke-dasharray="${(n.score / 100 * 188.5).toFixed(1)} 188.5"/>` : ''}<text x="36" y="43" text-anchor="middle">${n.score}</text></svg>
+      <div><div class="grade" style="color:var(--${sev})">${esc(n.grade)}</div><div class="k">Network health score</div></div></button>
+    <div class="stats">
+      ${stat(n.nodes, '', 'Nodes', 'nodes', '', 'Show every node')}
+      ${stat(n.messages, '', 'Messages', 'frames', '', 'Show the frames')}
+      ${stat(A.conv_total, '', 'Conversations', 'conversations', '', 'Show all conversations')}
+      ${stat(n.fail_pct ?? 'n/a', n.fail_pct != null ? '%' : '', 'Not delivered', 'conversations', 'fail', 'Show failed conversations', tone(n.fail_pct, 2, 10))}
+      ${stat(n.retx_pct ?? 'n/a', n.retx_pct != null ? '%' : '', 'Needed a retry', 'conversations', 'warn', 'Show conversations with retries', tone(n.retx_pct, 5, 15))}
+      ${stat(busy ? n.airtime_pct : (n.msgs_per_min ?? 'n/a'), busy ? '%' : (n.msgs_per_min != null ? '/min' : ''), busy ? 'Channel busy' : 'Message rate', 'frames', '', 'Show the frames', busy ? tone(n.airtime_pct, 10, 25) : '')}
+      ${stat(n.noise_floor ?? 'n/a', n.noise_floor != null ? '\u2009dBm' : '', 'Noise floor', 'troubleshoot', '', 'Interference and range checks')}
+    </div>
+  </section>
   <div class="grid cols2">
     <div>
       <div class="panel"><h2>Network category</h2>
@@ -120,11 +147,11 @@ function overview() {
           <dt>Controller</dt><dd>${n.controller != null ? esc(nameOf(n.home, n.controller)) : 'unknown'}${ctrlGuide() ? ` · ${esc(ctrlGuide().name)}` : ''} <button class="link small" data-act="tab" data-tab="nodes">${ctrlGuide() ? 'change' : 'set model'}</button></dd>
           <dt>Captured</dt><dd>${esc(fmtDur(n.duration))}, from ${esc(Object.entries(n.sources).map(([k, v]) => `${k} (${v})`).join(', '))}</dd>
           <dt>Health</dt><dd>${chips(n.by_health)}</dd>
-          <dt>Power</dt><dd>${chips(n.by_power)}</dd>
-          <dt>Security</dt><dd>${chips(n.by_security)}</dd>
-          <dt>Device types</dt><dd>${chips(n.by_type)}</dd>
-          <dt>Roles</dt><dd>${chips(n.by_role)}</dd>
-          <dt>Data rates</dt><dd>${chips(n.speeds)}</dd>
+          <dt>Power</dt><dd>${facts(n.by_power)}</dd>
+          <dt>Security</dt><dd>${facts(n.by_security)}</dd>
+          <dt>Device types</dt><dd>${facts(n.by_type)}</dd>
+          <dt>Roles</dt><dd>${facts(n.by_role)}</dd>
+          <dt>Data rates</dt><dd>${facts(n.speeds)}</dd>
           ${n.long_range ? `<dt>Long Range</dt><dd>${n.long_range} node(s)</dd>` : ''}
         </dl>
       </div>
@@ -134,7 +161,7 @@ function overview() {
         <span>Solid line: observed route · dashed: assumed direct · click a node for its conversations</span></div>
       </div>
     </div>
-    <div class="panel"><h2>Suggestions, most important first</h2>${sug}</div>
+    <div class="panel"><h2>What to fix first</h2>${sug || '<p class="muted">Nothing to fix in this capture.</p>'}</div>
   </div>`;
 }
 function netmap() {
@@ -175,8 +202,9 @@ function netmap() {
     }
     const col = { ok: 'ok', warn: 'warn', crit: 'crit', plain: 'muted' }[HEALTH[n.health] || 'plain'];
     const label = n.name.length > 18 ? n.name.slice(0, 17) + '…' : n.name;
-    dots += `<g><circle class="n" data-act="mapnode" data-id="${n.id}" cx="${p.x}" cy="${p.y}" r="${n === ctrl ? 13 : 9}" style="fill:var(--${n === ctrl ? 'accent' : col})"><title>${esc(n.name)} · ${esc(n.type)} · ${esc(n.health)}</title></circle>
-      <text x="${p.x}" y="${p.y + (n === ctrl ? 27 : 22)}" text-anchor="middle">${esc(label)}</text></g>`;
+    const glyph = n === ctrl ? '' : { crit: '×', warn: '!' }[col] || '';
+    dots += `<g><circle class="n" data-act="mapnode" data-id="${n.id}" tabindex="0" role="button" aria-label="${esc(n.name)}, ${esc(n.health)}: show its conversations" cx="${p.x}" cy="${p.y}" r="${n === ctrl ? 13 : 10}" style="fill:var(--${n === ctrl ? 'accent' : col})"><title>${esc(n.name)} · ${esc(n.type)} · ${esc(n.health)}</title></circle>
+      ${glyph ? `<text class="glyph" x="${p.x}" y="${p.y + 4}" text-anchor="middle">${glyph}</text>` : ''}<text x="${p.x}" y="${p.y + (n === ctrl ? 29 : 25)}" text-anchor="middle">${esc(label)}</text></g>`;
   }
   return `<svg class="map" viewBox="0 0 ${W} ${H}" role="img" aria-label="Network map">${svg}${edges}${dots}</svg>`;
 }
@@ -191,18 +219,18 @@ function conversations() {
     (!S.cnode || String(c.a) === S.cnode || String(c.b) === S.cnode) && (!S.cstatus || c.status === S.cstatus)
     && (!q || (c.title + ' ' + c.a_name + ' ' + c.b_name + ' ' + c.flags.join(' ')).toLowerCase().includes(q)));
   const shown = list.slice(-600).reverse();
-  const items = shown.map(c => `<div class="conv ${c.status} ${c.id === S.conv ? 'on' : ''}" data-act="conv" data-id="${c.id}">
+  const items = shown.map(c => `<div class="conv ${c.status} ${c.id === S.conv ? 'on' : ''}" data-act="conv" data-id="${c.id}" role="button" tabindex="0" aria-current="${c.id === S.conv}">
       <span class="t">${esc(fmtTime(c.start))}</span><div class="who">${esc(c.a_name)} ⇄ ${esc(c.b_name)}</div>
       <div class="what">${esc(c.title)}</div>
-      <div class="small muted">${c.frames} frames · ${esc(fmtDur(c.duration))}${c.flags.length ? ' · ' + esc(c.flags.join(' · ')) : ''}</div></div>`).join('');
+      <div class="small muted">${plural(c.frames, 'frame')} · ${esc(fmtDur(c.duration))}${c.flags.length ? ' · ' + esc(c.flags.join(' · ')) : ''}</div></div>`).join('');
   return `<div class="bar">
       <input type="search" class="grow" id="cq" placeholder="Search conversations (command, node, flag)…" value="${esc(S.cq)}">
       <select id="cnode">${nodeOptions(S.cnode)}</select>
       <select id="cstatus"><option value="">Any outcome</option>${['ok', 'warn', 'fail'].map(s => `<option value="${s}" ${S.cstatus === s ? 'selected' : ''}>${{ ok: 'Clean', warn: 'With retries or warnings', fail: 'Failed' }[s]}</option>`).join('')}</select>
       ${A.network.foreign_nodes ? `<label class="small"><input type="checkbox" data-act="foreign" ${S.foreign ? 'checked' : ''}> Other networks</label>` : ''}
       <span class="muted small">${list.length} of ${A.conv_total}${list.length > 600 ? ' (latest 600 shown)' : ''}</span></div>
-    <div class="split"><div class="panel convlist">${items || '<div class="empty">No conversations match.</div>'}</div>
-    <div class="panel">${convDetail()}</div></div>`;
+    <div class="split ${S.conv != null ? 'has-detail' : ''}"><div class="panel convlist">${items || '<div class="empty">No conversations match.</div>'}</div>
+    <div class="panel convdetail"><button class="link convback" data-act="convback">← All conversations</button>${convDetail()}</div></div>`;
 }
 function frameMeta(f, prev) {
   const m = [fmtTime(f.ts)];
@@ -227,24 +255,29 @@ function convDetail() {
   const c = A.conversations.find(c => c.id === S.conv);
   if (!c || !S.convFrames) return '<div class="empty">Select a conversation to see it message by message.</div>';
   let prev = null;
-  const rows = S.convFrames.map(f => {
+  const ackKinds = ['ack', 'routed_ack'];
+  const rows = S.convFrames.map((f, i) => {
     const side = f.src === c.a ? 'l' : 'r';
     let h;
     if (f.kind === 'event' || f.kind === 'beam') h = `<div class="evt ${f.kind}">${esc(fmtTime(f.ts))} · ${esc(f.label)}${f.kind === 'beam' ? ' to ' + esc(nameOf(f.home, f.dst)) : ''}</div>`;
     else if (f.kind === 'ack' || f.kind === 'routed_ack') h = `<div class="tick ${side}">✓ ${esc(f.label)} from ${esc(nameOf(f.home, f.src))} · ${esc(frameMeta(f, prev).slice(1, 4).join(' · '))}</div>`;
     else {
       const bad = f.kind === 'routed_err' || (f.tx_status && f.tx_status !== 'OK') || f.errors.includes('bad checksum');
-      h = `<div class="msg ${side} ${f.role === 'retx' ? 'retx' : ''} ${bad ? 'bad' : ''}" data-act="raw">
+      h = `<div class="msg ${side} ${f.role === 'retx' ? 'retx' : ''} ${bad ? 'bad' : ''}" data-act="raw" role="button" tabindex="0" aria-expanded="false">
         <div class="h">${esc(f.label)} ${f.encap.map(e => pill('plain', e)).join(' ')}${f.encrypted ? ' ' + pill('plain', 'encrypted') : ''}</div>
         ${f.summary ? `<div>${esc(f.summary)}</div>` : ''}
         <div class="meta">${esc(frameMeta(f, prev).join(' · '))}</div>
         <div class="raw">#${f.idx} · ${esc(f.source)}${f.raw ? ' · ' + esc(f.raw) : ''}</div></div>`;
+      // A command followed by its own retransmission (or ending a failed exchange) was never acknowledged.
+      const next = S.convFrames.slice(i + 1).find(g => g.kind !== 'event' && g.kind !== 'beam');
+      if (f.dst !== 255 && (next ? next.role === 'retx' && !ackKinds.includes(next.kind) : c.status === 'fail'))
+        h += `<div class="noack ${side === 'l' ? 'r' : 'l'}">no ACK from ${esc(nameOf(f.home, f.dst))}</div>`;
     }
     prev = f; return h;
   }).join('');
-  return `<h2>${esc(c.title)}</h2><p class="muted small">${c.frames} frames · ${c.n_msgs} messages · ${esc(fmtDur(c.duration))} · ${pill(c.status === 'ok' ? 'ok' : c.status, { ok: 'Clean', warn: 'Warnings', fail: 'Failed' }[c.status])} ${esc(c.flags.join(' · '))}</p>
-    <div class="lanes"><span>◀ ${esc(c.a_name)}</span><span>${esc(c.b_name)} ▶</span></div>
-    <div class="chat">${rows}</div><p class="muted small" style="margin-top:8px">Click a message to show its raw bytes.</p>`;
+  return `<h2>${esc(c.title)}</h2><p class="muted small">${plural(c.frames, 'frame')} · ${plural(c.n_msgs, 'message')} · ${esc(fmtDur(c.duration))} · ${pill(c.status === 'ok' ? 'ok' : c.status, { ok: 'Clean', warn: 'Warnings', fail: 'Failed' }[c.status])} ${esc(c.flags.join(' · '))}</p>
+    <div class="lanes"><span>${esc(c.a_name)}${c.a === A.network.controller ? ' <span class="muted">(controller)</span>' : ''}</span><span>${esc(c.b_name)}${c.b === A.network.controller ? ' <span class="muted">(controller)</span>' : ''}</span></div>
+    <div class="chat">${rows}</div><p class="muted small" style="margin-top:8px">Select a message to show its raw bytes.</p>`;
 }
 
 // ---------------------------------------------------------------- troubleshoot
@@ -254,10 +287,10 @@ function troubleshoot() {
     A.issues.map(iss => {
       const open = S.open[iss.id] ?? iss.findings.length > 0;
       const finds = iss.findings.map(f => `<div class="finding">${pill(f.severity)} ${esc(f.text)}<div class="fix"><b>What to do:</b> ${esc(f.fix)}</div>${hubStep(f.action)}
-        ${f.node ? `<button class="link small" data-act="nodeconv" data-id="${esc(f.node.split(':')[1])}">Show this node's conversations</button>` : ''}</div>`).join('');
-      const steps = iss.steps.map((s, i) => { const k = iss.id + ':' + i; return `<li class="${done[k] ? 'done' : ''}"><input type="checkbox" data-act="step" data-k="${esc(k)}" ${done[k] ? 'checked' : ''} aria-label="Step done"> ${esc(s)}</li>`; }).join('');
+        ${f.node ? `<button class="link small" data-act="nodeconv" data-id="${esc(f.node.split(':')[1])}">${esc(nameOf(f.node.split(':')[0], +f.node.split(':')[1]))}'s conversations →</button>` : ''}</div>`).join('');
+      const steps = iss.steps.map((s, i) => { const k = iss.id + ':' + i; return `<li class="${done[k] ? 'done' : ''}"><label><input type="checkbox" data-act="step" data-k="${esc(k)}" ${done[k] ? 'checked' : ''}> ${esc(s)}</label></li>`; }).join('');
       return `<div class="panel issue ${iss.severity}" id="issue-${esc(iss.id)}">
-        <div class="head" data-act="toggle" data-id="${esc(iss.id)}" role="button" tabindex="0" aria-expanded="${open}"><h3>${esc(iss.title)}</h3><span class="muted small">${esc(iss.summary)}</span>${pill(iss.severity)}<span class="muted">${open ? '▾' : '▸'}</span></div>
+        <div class="head" data-act="toggle" data-id="${esc(iss.id)}"><h3><button class="ihead" aria-expanded="${open}">${esc(iss.title)}</button></h3><span class="muted small">${esc(iss.summary)}</span>${pill(iss.severity)}<span class="muted">${open ? '▾' : '▸'}</span></div>
         ${open ? `<p class="muted small" style="margin-top:6px">${esc(iss.what)}</p>${finds}
           <h3 style="margin-top:12px">Troubleshooting checklist</h3><ol class="steps">${steps}</ol>
           ${guide ? `<h3 style="margin-top:12px">How to do this on ${esc(guide.name)}</h3>${howTo(guide, A.guides.issue_actions[iss.id] || []) || '<p class="muted small">No documented steps for this controller.</p>'}` : ''}` : ''}</div>`;
@@ -357,7 +390,7 @@ function nodes() {
   return `<div class="panel"><div class="bar" style="margin:0"><label for="nodectrl"><b>Controller model</b></label>
       <select id="nodectrl">${ctrlOptions('Choose your controller model…')}</select>
       <span class="muted small grow">${g ? `Troubleshooting shows how to carry out each fix on ${esc(g.name)}.` : S.ctrl === 'other' ? 'No guide for this controller yet; troubleshooting shows general advice.' : 'Choose it once and every troubleshooting step shows the exact menus for your hub.'} Saved for this network.</span></div></div>
-    <div class="bar"><span class="muted grow">Every node, categorised by what its traffic shows. Aliases are saved to <span class="mono">${esc(A.alias_file)}</span> and reused for every capture.</span>
+    <div class="bar"><span class="muted grow">Every node, categorised by what its traffic shows. Names you give devices are saved on this computer and reused for every capture.</span>
     ${A.network.foreign_nodes ? `<label class="small"><input type="checkbox" data-act="foreign" ${S.foreign ? 'checked' : ''}> Show ${A.network.foreign_nodes} nodes from other networks</label>` : ''}</div>
     <div class="panel tablewrap"><table><thead><tr><th>Node</th><th>Type</th><th>Role</th><th>Power</th><th>Security</th><th>Health</th><th>Traffic</th>
     <th class="num">Signal</th><th class="num">Sent</th><th class="num">Received</th><th class="num">Undelivered</th><th>Route from controller</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -368,12 +401,13 @@ function frames() {
   const F = S.frames || { total: 0, frames: [], offset: 0 };
   const rows = F.frames.map(f => {
     const bad = f.errors.length || f.role === 'retx' || f.kind === 'routed_err' || (f.tx_status && f.tx_status !== 'OK');
-    return `<tr class="${f.conv != null ? 'click' : ''}" data-act="${f.conv != null ? 'gotoconv' : ''}" data-id="${f.conv ?? ''}">
+    const raw = f.raw || '', hid = f.home && raw.startsWith(f.home) ? f.home.length : 0;
+    return `<tr class="${f.conv != null ? 'click' : ''} ${f.kind === 'ack' || f.kind === 'routed_ack' ? 'ackrow' : ''}" data-act="${f.conv != null ? 'gotoconv' : ''}" data-id="${f.conv ?? ''}">
       <td class="num muted">${f.idx}</td><td class="mono">${esc(fmtTime(f.ts))}</td>
       <td>${f.src != null ? esc(nameOf(f.home, f.src)) : ''}${f.dst != null ? ' → ' + esc(nameOf(f.home, f.dst)) : ''}</td>
       <td>${bad ? pill('warn', '!') + ' ' : ''}<b>${esc(f.label)}</b> ${f.encap.map(e => pill('plain', e)).join(' ')}<div class="small muted">${esc(f.summary)}</div></td>
       <td class="small muted">${esc(frameMeta(f, null).slice(1).join(' · '))}</td>
-      <td class="mono small muted" style="max-width:260px;word-break:break-all">${esc(f.raw)}</td></tr>`;
+      <td class="mono small rawcol"><span class="dim" title="Home ID">${esc(raw.slice(0, hid))}</span>${esc(raw.slice(hid))}</td></tr>`;
   }).join('');
   return `<div class="bar"><input type="search" class="grow" id="fq" placeholder="Filter frames (command, hex bytes, text)… press Enter" value="${esc(S.fq)}">
       <select id="fnode">${nodeOptions(S.fnode)}</select>
@@ -408,7 +442,7 @@ function data() {
   const lsGet = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
   const liveState = live ? `<p>${pill(live.state === 'connected' ? 'ok' : live.state === 'connecting' ? 'info' : 'crit', live.state)} ${live.frames} frames received${live.info ? ' · ' + esc(live.info) : ''}</p>${live.error ? `<div class="warnbox">${esc(live.error)}</div>` : ''}` : '';
   const isZ = live && live.kind === 'zniffer', isWs = live && live.kind === 'live';
-  const portValue = isZ ? live.url : (S.port ? S.port.path : lsGet('zwlens.port'));
+  const portValue = isZ ? live.url : (S.port ? S.port.path : (lsGet('zwlens.port') || (S.ports && S.ports.length === 1 ? S.ports[0].path : '')));
   if (S.port === null && portValue && !live) { S.port = { path: portValue, holders: [] }; checkPort(portValue); }
   const caps = A.captures.map(c => `<tr><td><b>${esc(c.name)}</b>${c.warnings.map(w => `<div class="warnbox">${esc(w)}</div>`).join('')}</td>
     <td>${esc({ log: 'Z-Wave JS log', zniffer: 'Zniffer capture', sdr: 'SDR capture', live: 'Live session' }[c.kind] || c.kind)}</td><td class="num">${c.frames}</td>
@@ -441,7 +475,7 @@ function data() {
     </div></div>
     <div class="panel"><div class="bar"><h2 class="grow" style="margin:0">Loaded captures</h2>
       ${(A.network.sources.zniffer || A.network.sources.sdr) ? '<a class="btn" href="/api/capture.zlf" download="zwlens-capture.zlf">Save as .zlf</a>' : ''}
-      <a class="btn" href="/api/report.md" target="_blank" rel="noopener">Export report</a><a class="btn" href="/api/analysis" download="zwlens-analysis.json">Export JSON</a><button class="btn" data-act="clear" ${A.captures.length || live ? '' : 'disabled'}>Clear all</button></div>
+      <a class="btn" href="/api/report.md" target="_blank" rel="noopener">Export report</a><a class="btn" href="/api/analysis" download="zwlens-analysis.json">Export JSON</a><button class="btn danger" data-act="clear" ${A.captures.length || live ? '' : 'disabled'}>Clear all…</button></div>
       ${caps ? `<table><thead><tr><th>Name</th><th>Type</th><th class="num">Frames</th><th></th></tr></thead><tbody>${caps}</tbody></table>` : '<p class="muted">Nothing loaded yet.</p>'}
     </div>`;
 }
@@ -467,11 +501,19 @@ const actions = {
   },
   conv: el => loadConv(+el.dataset.id),
   gotoconv: async el => { S.tab = 'conversations'; S.cq = ''; S.cnode = ''; S.cstatus = ''; await loadConv(+el.dataset.id); },
-  raw: el => el.classList.toggle('open'),
+  raw: el => el.setAttribute('aria-expanded', el.classList.toggle('open')),
   toggle: el => { const i = A.issues.find(i => i.id === el.dataset.id); S.open[i.id] = !(S.open[i.id] ?? i.findings.length > 0); render(); },
   issue: el => { S.tab = 'troubleshoot'; S.open[el.dataset.id] = true; if (el.dataset.id.startsWith('kb-')) { S.kq = ''; S.kcat = ''; } render(); const t = document.getElementById('issue-' + el.dataset.id); if (t) t.scrollIntoView({ block: 'start' }); },
-  step: el => { done[el.dataset.k] = el.checked; try { localStorage.setItem('zwlens.done', JSON.stringify(done)); } catch (e) { /* storage unavailable */ } el.parentElement.classList.toggle('done', el.checked); },
-  nodeconv: el => { S.tab = 'conversations'; S.cnode = el.dataset.id; S.cq = ''; S.cstatus = ''; render(); },
+  step: el => { done[el.dataset.k] = el.checked; try { localStorage.setItem('zwlens.done', JSON.stringify(done)); } catch (e) { /* storage unavailable */ } el.closest('li').classList.toggle('done', el.checked); },
+  nodeconv: async el => {
+    S.tab = 'conversations'; S.cnode = el.dataset.id; S.cq = ''; S.cstatus = '';
+    const mine = A.conversations.filter(c => String(c.a) === S.cnode || String(c.b) === S.cnode);
+    const rank = { fail: 2, warn: 1, ok: 0 };
+    const pick = mine.reduce((b, c) => !b || rank[c.status] > rank[b.status] || (rank[c.status] === rank[b.status] && c.start > b.start) ? c : b, null);
+    if (pick) await loadConv(pick.id); else render();
+    window.scrollTo(0, 0);
+  },
+  convback: () => { S.conv = null; S.convFrames = null; render(); },
   mapnode: el => actions.nodeconv(el),
   edit: el => { S.edit = el.dataset.key || null; render(); const i = $('#al-name'); if (i) i.focus(); },
   savealias: async el => { await post('/api/alias', { key: el.dataset.key, name: $('#al-name').value, location: $('#al-loc').value, notes: $('#al-notes').value }); S.edit = null; toast('Alias saved'); await load(); },
@@ -529,7 +571,7 @@ document.addEventListener('input', ev => {
   S[id] = ev.target.value; render();
   const i = $('#' + id); i.focus(); i.setSelectionRange(i.value.length, i.value.length);
 });
-document.addEventListener('keydown', ev => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('.issue .head')) { ev.preventDefault(); ev.target.click(); }
+document.addEventListener('keydown', ev => { if ((ev.key === 'Enter' || ev.key === ' ') && ev.target.matches('[role=button][data-act], circle[data-act]')) { ev.preventDefault(); ev.target.dispatchEvent(new MouseEvent('click', { bubbles: true })); }
   if (ev.key === 'Enter' && ev.target.id === 'al-name') { const b = document.querySelector('[data-act=savealias]'); if (b) b.click(); } });
 $('#tabs').addEventListener('click', ev => { const b = ev.target.closest('button'); if (b) actions.tab(b); });
 $('.brand').addEventListener('click', () => $('#tabs [data-tab=overview]').click());  // title = home
@@ -549,7 +591,16 @@ setInterval(async () => {
   } catch (e) { /* server stopped; keep the page usable */ }
 }, 2000);
 
-load().then(() => { if (A.network.frames && S.tab !== 'help') { S.tab = 'overview'; render(); } }).catch(e => toast(e.message));
+window.addEventListener('popstate', async () => {
+  const t = hashTab(); if (!t || t === S.tab) return;
+  S.tab = t; if (t === 'frames') await loadFrames(false); render();
+});
+const startTab = hashTab();  // read before the first render, which would otherwise rewrite the address
+if (startTab) S.tab = startTab;
+load().then(() => {
+  if (startTab) return;
+  if (A.network.frames && S.tab !== 'help') { S.tab = 'overview'; history.replaceState(null, '', '#overview'); render(); }
+}).catch(e => toast(e.message));
 
 // ---------------------------------------------------------------- help
 // The Help tab: sections and glossary from /api/help, a searchable table of contents, and deep links
@@ -674,7 +725,6 @@ window.addEventListener('hashchange', () => { if (helpRoute()) helpShow(document
 $('#tabs').addEventListener('click', ev => {
   const b = ev.target.closest('button'); if (!b) return;
   if (b.dataset.tab === 'help') history.pushState(null, '', '#help/' + S.help);
-  else if (location.hash.startsWith('#help')) history.replaceState(null, '', location.pathname + location.search);
 });
 document.addEventListener('input', ev => {
   if (ev.target.id !== 'hq' || !HELP) return;
@@ -709,7 +759,7 @@ function helpDecorate() {
     const tip = map[el.textContent.trim()];
     if (tip && !el.querySelector('.qhelp')) el.insertAdjacentHTML('beforeend', ' ' + helpBtn(...tip));
   });
-  add('th', HELP_TIPS.th); add('.kv dt', HELP_TIPS.dt); add('.card .k', HELP_TIPS.k); add('h2', HELP_TIPS.h2);
+  add('th', HELP_TIPS.th); add('.kv dt', HELP_TIPS.dt); add('.stat .k, .score .k', HELP_TIPS.k); add('h2', HELP_TIPS.h2);
   document.querySelectorAll('#view td').forEach(td => {
     if (td.firstChild && td.firstChild.nodeType === 3 && td.firstChild.textContent.startsWith('Battery, FLiRS')) td.firstChild.after(document.createRange().createContextualFragment(' ' + helpBtn('flirs', 'FLiRS devices')));
   });

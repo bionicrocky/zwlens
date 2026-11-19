@@ -38,14 +38,14 @@ and choose *Open*. Your browser opens at <http://localhost:8377>. From there **e
 
 | You want to | In the app |
 |---|---|
-| Capture live from a Zniffer stick | **Data** > *Live from a Zniffer stick* > pick the port > **Capture** |
+| Capture live from a Zniffer stick | **Sources** > *Live from a Zniffer stick* > pick the port > **Capture** |
 | Change the stick's radio region | The *Radio region* list that appears once capturing |
 | Free a stick another program is using | zwlens names the program and offers **Stop it and capture** |
 | Open a saved capture or log | Drop the file anywhere on the page |
-| Follow a Z-Wave JS / Home Assistant controller | **Data** > *Live from a controller* > **Connect** |
+| Follow a Z-Wave JS / Home Assistant controller | **Sources** > *Live from a controller* > **Connect** |
 | Try it with no hardware | **Try with sample data** |
-| Keep a live capture | **Data** > **Save as .zlf** |
-| Get a report | **Data** > **Export report** or **Export JSON** |
+| Keep a live capture | **Sources** > **Save as .zlf** |
+| Get a report | **Sources** > **Export report** or **Export JSON** |
 | Name your devices | **Nodes** > **Rename** |
 | Get fixes for your hub | **Nodes** > *Controller model* |
 
@@ -83,7 +83,7 @@ python3 -m zwlens analyze capture.zlf               # print a report and exit (-
 | **Troubleshoot** | Five guided troubleshooters (unreachable nodes, weak signal and interference, routing, congestion, security), each with findings and a checklist, followed by the known-issue library. |
 | **Nodes** | Every node categorised by type, role, power source, security, health and traffic. *Rename* gives a node an alias, location and notes. |
 | **Frames** | Every decoded frame, searchable, with raw bytes. |
-| **Data** | Load files, start a live capture, save a capture as `.zlf`, export a report. |
+| **Sources** | Load files, start a live capture, save a capture as `.zlf`, export a report. |
 | **Help** | A searchable guide to using zwlens and to how Z-Wave works (mesh, routing, signal, sleeping and FLiRS devices, S0/S2, Long Range and more), a glossary, and answers to "why does zwlens say…". Small **?** buttons beside the health score, signal, routes, security and FLiRS open the matching topic; topics have links such as `#help/routing`. |
 
 ### Known-issue library
@@ -192,7 +192,7 @@ The network data is not restored: restore a backup or start a new network.
 
 ### Capturing
 
-1. Plug the stick in and open the **Data** tab. zwlens lists the serial ports it finds; press
+1. Plug the stick in and open the **Sources** tab. zwlens lists the serial ports it finds; press
    *Rescan* if yours is missing.
 2. Pick the port and press **Capture**. Frames appear in every tab as they arrive.
 3. Check the *Radio region* shown once it connects, and change it there if it does not match your

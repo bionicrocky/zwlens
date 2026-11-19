@@ -96,7 +96,7 @@ def main(argv=None) -> int:
         from .zniffer_live import port_holders
         for h in port_holders(args.zniffer):
             print(f"note: {args.zniffer} is in use by {h['name']} (process {h['pid']}). Close that program, "
-                  f"or run 'kill {h['pid']}', then press Capture in the Data tab.")
+                  f"or run 'kill {h['pid']}', then press Capture in the Sources tab.")
         session.start_live(args.zniffer, args.zniffer_frequency)
     try:
         httpd = serve(session, args.host, args.port)
