@@ -20,7 +20,8 @@ WEB = Path(__file__).parent / "web"
 STATIC = {"/": ("index.html", "text/html; charset=utf-8"),
           "/app.js": ("app.js", "text/javascript; charset=utf-8"),
           "/style.css": ("style.css", "text/css; charset=utf-8"),
-          "/logo.svg": ("logo.svg", "image/svg+xml")}
+          "/logo.svg": ("logo.svg", "image/svg+xml"),
+          "/favicon.ico": ("favicon.ico", "image/x-icon")}
 MAX_UPLOAD = 300 * 1024 * 1024
 MAX_CONVS = 3000
 
@@ -119,6 +120,7 @@ class Session:
             out["aliases"] = self.aliases.data
             out["alias_file"] = str(self.aliases.path)
             out["guides"] = controller_catalogue()
+            out["settings"] = {"chip": self.chip}
             out["app_version"] = __version__
         return out
 
@@ -253,6 +255,21 @@ def make_handler(session: Session, allowed_hosts: set | None):
                     except SerialError as exc:
                         return self._json({"error": str(exc)}, 409)
                     return self._json({"ok": True, "freed": freed})
+                elif u.path == "/api/live/region":
+                    live = session.live
+                    if live is None or not hasattr(live, "set_region"):
+                        return self._json({"error": "no Zniffer capture is running"}, 409)
+                    try:
+                        live.set_region(int(data["id"]))
+                    except SerialError as exc:
+                        return self._json({"error": str(exc)}, 409)
+                elif u.path == "/api/sample":
+                    from .sample_data import sample_bytes
+                    return self._json(session.add(*sample_bytes(str(data.get("kind", "zniffer")))))
+                elif u.path == "/api/settings":
+                    if data.get("chip") in ("500", "700"):
+                        session.chip = data["chip"]
+                        session.bump()
                 elif u.path == "/api/live/stop":
                     session.stop_live()
                 else:

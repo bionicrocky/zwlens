@@ -290,6 +290,10 @@ class ZnifferClient:
         self.frames: list = []
         self.meta: dict = {}
         self.chip = "700"
+        self.regions: list = []
+        self.region = None
+        self._want_region = None
+        self._chip_info = ""
         self.corrupt = 0
         self._factory = port_factory
         self._port = None
@@ -300,7 +304,7 @@ class ZnifferClient:
 
     def status(self) -> dict:
         return {"url": self.url, "state": self.state, "error": self.error, "frames": len(self.frames),
-                "info": self.info, "kind": self.kind}
+                "info": self.info, "kind": self.kind, "regions": self.regions, "region": self.region}
 
     def stop(self) -> None:
         self._stop = True
@@ -359,12 +363,37 @@ class ZnifferClient:
                 else:
                     self.error = (f"frequency {self.frequency} is not supported by this stick "
                                   f"(supported: {', '.join(map(str, supported))}); using {current}.")
-            name = self._command(FN_FREQ_INFO, bytes([current]), timeout=0.5)
-            label = name[2:].decode("ascii", "replace").strip("\x00 ") if name and len(name) > 2 else ""
-            parts.append(f"frequency {label or current}")
+            self.regions = [{"id": fid, "name": self._region_name(fid)} for fid in supported]
+            self.region = current
         if self._command(FN_START) is None:
             raise SerialError("the device did not acknowledge the start command.")
-        self.info = ", ".join(parts)
+        self._chip_info = parts[0]
+        self._set_info()
+
+    def _region_name(self, fid: int) -> str:
+        name = self._command(FN_FREQ_INFO, bytes([fid]), timeout=0.3)
+        label = name[2:].decode("ascii", "replace").strip("\x00 ") if name and len(name) > 2 else ""
+        return label or f"Region {fid}"
+
+    def _set_info(self) -> None:
+        name = next((r["name"] for r in self.regions if r["id"] == self.region), None)
+        self.info = self._chip_info + (f", region {name}" if name else "")
+
+    def set_region(self, fid: int) -> None:
+        """Ask the capture thread to switch the stick to another region."""
+        if not any(r["id"] == fid for r in self.regions):
+            raise SerialError(f"this stick does not support region {fid}")
+        self._want_region = fid
+
+    def _switch_region(self) -> None:
+        fid, self._want_region = self._want_region, None
+        self._command(FN_STOP, timeout=0.5)
+        self._command(FN_SET_FREQ, bytes([fid]))
+        if self._command(FN_START) is None:
+            raise SerialError("the device did not restart capture after the region change.")
+        self.region = fid
+        self._set_info()
+        self._on_change()
 
     def _run(self) -> None:
         try:
@@ -374,6 +403,8 @@ class ZnifferClient:
             self._on_change()
             last = 0
             while not self._stop:
+                if self._want_region is not None:
+                    self._switch_region()
                 self._pump(0.2)
                 if len(self.frames) != last:
                     last = len(self.frames)

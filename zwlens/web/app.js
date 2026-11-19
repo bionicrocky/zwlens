@@ -46,6 +46,7 @@ async function load() {
   A = await api('/api/analysis');
   version = A.version;
   A.catalog = A.catalog || [];
+  A.settings = A.settings || { chip: '700' };
   A.guides = A.guides || { actions: {}, issue_actions: {}, controllers: [] };
   names = {};
   for (const n of A.nodes) names[n.home + ':' + n.id] = n.name;
@@ -76,7 +77,7 @@ function render() {
   const empty = !A.network.frames;
   const views = { overview, conversations, troubleshoot, nodes, frames, data };
   $('#view').innerHTML = (empty && S.tab !== 'data')
-    ? `<div class="panel empty">${LOGO}<h3>No capture loaded</h3><p>Add a log or capture file, or connect to a live controller or Zniffer stick.</p><button class="btn primary" data-act="tab" data-tab="data">Add data</button></div>`
+    ? `<div class="panel empty">${LOGO}<h3>No capture loaded</h3><p>Capture live from a Zniffer stick, add a log or capture file, or connect to a live controller.</p><button class="btn primary" data-act="tab" data-tab="data">Add data</button> <button class="btn" data-act="sample" data-kind="zniffer">Try with sample data</button></div>`
     : views[S.tab]();
 }
 
@@ -382,6 +383,10 @@ function data() {
       <div class="dropzone"><p>Drop files anywhere on this page, or</p><button class="btn primary" data-act="pick">Choose files…</button>
       <p class="muted small" style="margin-top:10px">Z-Wave JS driver logs (.log, .txt) · Zniffer captures (.zlf) · SDR output (text with hex frames, or .pcap).<br>Files stay on this computer.</p></div>
       ${S.notes.map(n => `<div class="warnbox">${esc(n)}</div>`).join('')}
+      <div class="bar" style="margin:12px 0 0"><span class="muted small grow">No capture yet? Load invented sample data:</span>
+        <button class="btn" data-act="sample" data-kind="zniffer">Sample Zniffer capture</button><button class="btn" data-act="sample" data-kind="log">Sample Z-Wave JS log</button></div>
+      <div class="bar" style="margin:10px 0 0"><label class="muted small grow" for="chip">Signal conversion for .zlf files recorded with a</label>
+        <select id="chip"><option value="700" ${A.settings.chip === '700' ? 'selected' : ''}>700/800-series Zniffer</option><option value="500" ${A.settings.chip === '500' ? 'selected' : ''}>500-series Zniffer</option></select></div>
     </div>
     <div class="panel"><h2>Live from a controller</h2>
       <p class="muted small">Connects read-only to a Z-Wave JS server (Z-Wave JS UI or the Home Assistant add-on, usually port 3000). Set the driver log level to <b>debug</b> to see commands.</p>
@@ -396,10 +401,12 @@ function data() {
       ${isZ ? '<button class="btn" data-act="livestop">Stop</button>' : `<button class="btn primary" data-act="zstart" ${live ? 'disabled' : ''}>Capture</button>`}</div>
       ${S.ports && S.ports.length ? `<p class="muted small">Found: ${esc(S.ports.map(p => p.path).join(', '))}</p>` : '<p class="muted small">No serial ports detected; type the port name.</p>'}
       ${portBusy()}${isZ ? liveState : ''}
+      ${isZ && live.regions && live.regions.length ? `<div class="bar" style="margin:8px 0 0"><label class="muted small" for="zregion">Radio region (must match your network)</label>
+        <select id="zregion">${live.regions.map(r => `<option value="${r.id}" ${r.id === live.region ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>` : ''}
     </div></div>
     <div class="panel"><div class="bar"><h2 class="grow" style="margin:0">Loaded captures</h2>
       ${(A.network.sources.zniffer || A.network.sources.sdr) ? '<a class="btn" href="/api/capture.zlf" download="zwlens-capture.zlf">Save as .zlf</a>' : ''}
-      <a class="btn" href="/api/report.md" target="_blank" rel="noopener">Export report</a><button class="btn" data-act="clear" ${A.captures.length || live ? '' : 'disabled'}>Clear all</button></div>
+      <a class="btn" href="/api/report.md" target="_blank" rel="noopener">Export report</a><a class="btn" href="/api/analysis" download="zwlens-analysis.json">Export JSON</a><button class="btn" data-act="clear" ${A.captures.length || live ? '' : 'disabled'}>Clear all</button></div>
       ${caps ? `<table><thead><tr><th>Name</th><th>Type</th><th class="num">Frames</th><th></th></tr></thead><tbody>${caps}</tbody></table>` : '<p class="muted">Nothing loaded yet.</p>'}
     </div>`;
 }
@@ -432,6 +439,7 @@ const actions = {
   foreign: el => { S.foreign = el.checked; render(); },
   fpage: async el => { S.foff = Math.max(0, S.foff + +el.dataset.d); await loadFrames(); },
   pick: () => $('#file').click(),
+  sample: async el => { const r = await post('/api/sample', { kind: el.dataset.kind }); toast(`${r.name}: ${r.frames} frames loaded`); await load(); if (S.tab === 'data' || !A.network.frames) { S.tab = 'overview'; } render(); },
   remove: async el => { await post('/api/remove', { id: +el.dataset.id }); await load(); },
   clear: async () => { if (confirm('Remove all loaded captures? Aliases are kept.')) { await post('/api/clear'); S.notes = []; await load(); } },
   livestart: async () => { const url = $('#liveurl').value.trim(); try { localStorage.setItem('zwlens.live', url); } catch (e) { /* ignore */ } await post('/api/live/start', { url }); await load(); },
@@ -466,6 +474,8 @@ document.addEventListener('change', async ev => {
     if (el.id === 'file') { await upload([...el.files]); el.value = ''; }
     if (el.id === 'zport') { await checkPort(el.value.trim()); }
     if (el.id === 'kcat') { S.kcat = el.value; render(); }
+    if (el.id === 'chip') { await post('/api/settings', { chip: el.value }); toast('Applies to .zlf files you load from now on'); await load(); }
+    if (el.id === 'zregion') { await post('/api/live/region', { id: +el.value }); toast('Switching region…'); setTimeout(() => load().catch(() => {}), 1500); }
     if (el.id === 'ctrl') { S.ctrl = el.value; try { localStorage.setItem('zwlens.ctrl', S.ctrl); } catch (e) { /* ignore */ } render(); }
     if (el.id === 'cnode') { S.cnode = el.value; render(); }
     if (el.id === 'cstatus') { S.cstatus = el.value; render(); }

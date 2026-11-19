@@ -319,6 +319,13 @@ class AliasesAndServer(unittest.TestCase):
                 saved = parse_bytes(call("/api/capture.zlf")[1], "saved.zlf")
                 self.assertEqual(len(saved.frames), len(make_samples.sniffer_entries()))
                 self.assertFalse(any(f.errors for f in saved.frames))
+                ico = call("/favicon.ico")
+                self.assertEqual((ico[0], ico[1][:4]), (200, b"\x00\x00\x01\x00"))
+                loaded = json.loads(call("/api/sample", b'{"kind":"log"}', h)[1])
+                self.assertTrue(loaded["loaded"] and loaded["kind"] == "log")
+                self.assertEqual(call("/api/settings", b'{"chip":"500"}', h)[0], 200)
+                self.assertEqual(json.loads(call("/api/analysis")[1])["settings"]["chip"], "500")
+                self.assertEqual(call("/api/live/region", b'{"id":1}', h)[0], 409)
                 self.assertEqual(call("/api/nope")[0], 404)
                 self.assertEqual(call("/../zwlens/server.py")[0], 404)
             finally:
@@ -451,6 +458,16 @@ class ZnifferLive(unittest.TestCase):
             f = session.live.frames[0]
             self.assertEqual((f.source, f.src, f.dst, f.rssi, f.errors), ("zniffer", 1, 2, -60.0, []))
             self.assertEqual(session.summary()["network"]["frames"], len(entries))
+            self.assertEqual((st["region"], [r["name"] for r in st["regions"]]), (0, ["EU", "EU"]))
+            session.live.set_region(1)
+            for _ in range(60):
+                if session.live.region == 1:
+                    break
+                time.sleep(0.05)
+            self.assertEqual(session.live.region, 1)
+            self.assertIn(2, seen)              # the set-frequency command reached the stick
+            with self.assertRaises(Exception):
+                session.live.set_region(99)
             session.stop_live()
             self.assertIsNone(session.live)
             self.assertEqual(session.captures[0]["kind"], "zniffer")

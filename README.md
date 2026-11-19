@@ -2,46 +2,69 @@
 
 <img src="zwlens/web/logo.svg" width="72" alt="zwlens logo" align="right">
 
-**A Z-Wave traffic analyzer that tells you what is wrong with your network and what to fix first.**
+**Capture and troubleshoot a Z-Wave network from one small app.** Plug in a Zniffer stick, press
+**Capture**, and zwlens shows you the traffic live, tells you what is wrong, and what to fix first.
 
-zwlens reads Z-Wave traffic from a live Zniffer stick, saved Zniffer captures, Z-Wave JS logs,
-SDR output or a running Z-Wave JS controller. It turns the traffic into readable conversations,
-categorises every node, checks it against a library of 85 known failure modes, and gives you a
-prioritised list of suggestions.
-
-- Runs on Linux, macOS and Windows with **Python 3.9+ and nothing else** (no packages, no build step).
-- Runs entirely on your computer. Captures never leave it and it needs no internet access.
-- Web UI on `localhost`, plus a command-line report for scripts and SSH sessions.
+- **It does the capturing itself.** zwlens talks to the Zniffer stick directly: no Z-Wave JS UI,
+  Silicon Labs Zniffer or other capture software is needed. It also reads saved captures and logs.
+- **It explains what it sees.** Traffic becomes readable conversations; every node is categorised;
+  five troubleshooters and a library of 85 known failure modes produce a prioritised to-do list.
+- **It tells you how to fix it on your hub.** Step-by-step menu paths for Home Assistant, Hubitat,
+  SmartThings, Qolsys IQ Panel, 2GIG, Alarm.com / SuretyDIY and Ring.
+- **Nothing to install but Python.** No packages, no build step, no account. It runs on Linux, macOS
+  and Windows, entirely on your computer; captures never leave it.
 
 ## Quick start
 
-```
-git clone https://github.com/bionicrocky/zwlens.git
-cd zwlens
-python3 -m zwlens
-```
+1. Install [Python 3.9 or newer](https://www.python.org/downloads/) if you do not have it.
+2. Download zwlens: `git clone https://github.com/bionicrocky/zwlens.git`, or use
+   *Code > Download ZIP* on GitHub and unpack it.
+3. Start it by double-clicking the launcher for your system:
 
-That opens the UI at <http://localhost:8377>. Drop a capture file onto the page, or use the **Data**
-tab to connect to something live. On Windows use `py -m zwlens`.
+   | System | Launcher |
+   |---|---|
+   | Windows | `start-zwlens.bat` |
+   | macOS | `start-zwlens.command` |
+   | Linux | `start-zwlens.sh` (or run `python3 -m zwlens` in the folder) |
 
-To try it without any hardware:
+Your browser opens at <http://localhost:8377>. From there **everything is done in the app**:
 
-```
-python3 samples/make_samples.py
-python3 -m zwlens serve samples/zniffer-sample.zlf
-```
+| You want to | In the app |
+|---|---|
+| Capture live from a Zniffer stick | **Data** > *Live from a Zniffer stick* > pick the port > **Capture** |
+| Change the stick's radio region | The *Radio region* list that appears once capturing |
+| Free a stick another program is using | zwlens names the program and offers **Stop it and capture** |
+| Open a saved capture or log | Drop the file anywhere on the page |
+| Follow a Z-Wave JS / Home Assistant controller | **Data** > *Live from a controller* > **Connect** |
+| Try it with no hardware | **Try with sample data** |
+| Keep a live capture | **Data** > **Save as .zlf** |
+| Get a report | **Data** > **Export report** or **Export JSON** |
+| Name your devices | **Nodes** > **Rename** |
 
-Other ways to run it:
+No Zniffer stick yet? See [Zniffer hardware](#zniffer-hardware) for what to buy and how to switch
+a stick into Zniffer mode.
+
+Two things the app cannot do for you, once per computer:
+
+- **Linux:** allow your user to open serial ports with `sudo usermod -aG dialout $USER`, then log
+  out and back in.
+- **Windows:** live capture needs one extra package: `py -m pip install pyserial`.
+
+<details>
+<summary>Command-line options, for scripts and servers</summary>
 
 ```
 python3 -m zwlens serve capture.zlf zwavejs.log     # load files at startup
-python3 -m zwlens serve --zniffer /dev/ttyACM0      # capture live from a Zniffer stick
+python3 -m zwlens serve --zniffer /dev/ttyACM0      # start capturing immediately
 python3 -m zwlens serve --live ws://localhost:3000  # follow a Z-Wave JS server (read-only)
+python3 -m zwlens serve --no-browser --port 9000    # headless
 python3 -m zwlens ports                             # list serial ports
 python3 -m zwlens analyze capture.zlf               # print a report and exit (--format json)
 ```
 
 `pip install .` is optional and adds a `zwlens` command.
+
+</details>
 
 ## What you get
 
@@ -155,20 +178,17 @@ The network data is not restored: restore a backup or start a new network.
 
 ### Capturing
 
-1. Find the port: `python3 -m zwlens ports`.
-2. On Linux, make sure you can open it: `sudo usermod -aG dialout $USER`, then log out and back in.
-3. Start a capture, either from the **Data** tab (*Live from a Zniffer stick* > *Capture*) or with
-   `python3 -m zwlens serve --zniffer /dev/ttyACM0`.
+1. Plug the stick in and open the **Data** tab. zwlens lists the serial ports it finds; press
+   *Rescan* if yours is missing.
+2. Pick the port and press **Capture**. Frames appear in every tab as they arrive.
+3. Check the *Radio region* shown once it connects, and change it there if it does not match your
+   network.
+4. Press **Stop** when you have enough, and **Save as .zlf** if you want to keep it.
 
 Only one program can use the stick at a time. If Z-Wave JS UI has it open, zwlens names the
 program holding the port and offers to stop it, and never sends anything to a busy port. To keep
 Z-Wave JS UI running instead, let it capture and load the `.zlf` files it saves.
 
-The stick captures on the region it is already set to; the Data tab shows it once connected.
-It must match your network's region. `--zniffer-frequency ID` switches it by numeric id.
-
-Linux and macOS need nothing extra for serial access. On Windows install `pyserial`
-(`pip install pyserial`).
 
 **Place the sniffer next to your controller.** Signal levels are measured at the sniffer, so that
 is the only position where they say something about what the controller hears.
