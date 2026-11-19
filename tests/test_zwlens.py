@@ -547,10 +547,14 @@ class ZnifferLive(unittest.TestCase):
         master, slave = os.openpty()
         entries = make_samples.sniffer_entries()[:40]
         seen = []
+        done = threading.Event()
 
         def stick():
+            import select
             stream = ZnifferStream()
-            while True:
+            while not done.is_set():  # poll: on macOS, close() waits for a thread blocked in read()
+                if not select.select([master], [], [], 0.05)[0]:
+                    continue
                 try:
                     chunk = os.read(master, 256)
                 except OSError:
@@ -565,7 +569,8 @@ class ZnifferLive(unittest.TestCase):
                             rid = {"9.6k": 0, "40k": 1, "100k": 2}[rate]
                             os.write(master, bytes([0x21, 1, 0, 0, rid, 0, 49, 0x21, 3, len(mpdu)]) + mpdu)
 
-        threading.Thread(target=stick, daemon=True).start()
+        stick_thread = threading.Thread(target=stick, daemon=True)
+        stick_thread.start()
         with tempfile.TemporaryDirectory() as d:
             session = Session(AliasStore(Path(d) / "a.json"))
             session.start_live(os.ttyname(slave))
@@ -597,6 +602,8 @@ class ZnifferLive(unittest.TestCase):
             self.assertEqual(seen[0], 5)        # stop first, in case it was already capturing
             self.assertEqual(seen[-1], 5)       # and stop on the way out
             self.assertIn(4, seen)
+        done.set()
+        stick_thread.join(2)
         os.close(master); os.close(slave)
 
     @unittest.skipUnless(hasattr(__import__("os"), "openpty"), "needs a pseudo-terminal")
