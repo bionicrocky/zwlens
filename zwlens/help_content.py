@@ -190,7 +190,7 @@ SECTIONS = [
     },
     {
         "id": "tab-troubleshoot", "group": "use", "title": "The Troubleshoot tab",
-        "summary": "Five troubleshooters, controller directions and the known-issue library.",
+        "summary": "Five troubleshooters, controller and device guides, and the known-issue library.",
         "body": [
             "**Your controller**: pick your hub and every checklist gains its exact menu path. See "
             "[[controller-guides]].",
@@ -202,6 +202,14 @@ SECTIONS = [
             "documentation and user forums. Each is marked *Detected*, *Not seen* (checked, not found), or "
             "*Check by hand* (traffic cannot show it, such as a stick in a metal rack). Search it, or filter "
             "to *Detected only*.",
+            "**Device troubleshooting**: guides for common devices (Kwikset, Schlage and Yale locks, "
+            "GE/Jasco and Zooz switches and sensors). Each lists the usual problems with causes and fixes, "
+            "and how to add, remove, reset and update the device. Mark a node as that device and its health "
+            "and findings show next to the advice.",
+            "**Acknowledge** under a finding hides it once you have dealt with it, and *Acknowledge all* "
+            "hides every open finding after you confirm. Acknowledged findings leave the Troubleshoot count "
+            "and the Overview suggestions, but come back if they get worse. The health score does not "
+            "change. *Clear acknowledgements* undoes them.",
         ],
         "links": [],
     },

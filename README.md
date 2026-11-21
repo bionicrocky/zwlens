@@ -12,7 +12,8 @@
 - **It explains what it sees.** Traffic becomes readable conversations; every node is categorised;
   five troubleshooters and a library of 85 known failure modes produce a prioritised to-do list.
 - **It tells you how to fix it on your hub.** Step-by-step menu paths for 17 controllers, from
-  Home Assistant, Hubitat and Homey to Qolsys, Ring, Vivint and ADT security panels.
+  Home Assistant, Hubitat and Homey to Qolsys, Ring, Vivint and ADT security panels, plus
+  troubleshooting guides for common devices: Kwikset, Schlage and Yale locks, GE/Jasco and Zooz.
 - **Nothing to install but Python.** No packages, no build step, no account. It runs on Linux, macOS
   and Windows, entirely on your computer; captures never leave it.
 
@@ -80,8 +81,8 @@ python3 -m zwlens analyze capture.zlf               # print a report and exit (-
 |---|---|
 | **Overview** | Health score, network category (size, topology, power, security, device types), a network map, and suggestions ordered by importance. |
 | **Conversations** | Traffic grouped into exchanges between two nodes, shown message by message with ACKs, retransmissions, wake-up beams, routes, signal and timing. |
-| **Troubleshoot** | Five guided troubleshooters (unreachable nodes, weak signal and interference, routing, congestion, security), each with findings and a checklist, followed by the known-issue library. |
-| **Nodes** | Every node categorised by type, role, power source, security, health and traffic. *Rename* gives a node an alias, location and notes. |
+| **Troubleshoot** | Five guided troubleshooters (unreachable nodes, weak signal and interference, routing, congestion, security), each with findings and a checklist, then device troubleshooting and the known-issue library. *Acknowledge* hides a finding you have dealt with; *Acknowledge all* (after a confirmation) hides them all. |
+| **Nodes** | Every node categorised by type, role, power source, security, health and traffic. *Rename* gives a node an alias, location and notes, and marks which device it is. |
 | **Frames** | Every decoded frame, searchable, with raw bytes. |
 | **Sources** | Load files, start a live capture, save a capture as `.zlf`, export a report. |
 | **Help** | A searchable guide to using zwlens and to how Z-Wave works (mesh, routing, signal, sleeping and FLiRS devices, S0/S2, Long Range and more), a glossary, and answers to "why does zwlens say…". Small **?** buttons beside the health score, signal, routes, security and FLiRS open the matching topic; topics have links such as `#help/routing`. |
@@ -140,6 +141,32 @@ updates move menus, so check the linked page if something does not match. Where 
 nothing (Ring and SmartThings expose very little), the guide says so. When a maker's own manual
 could not be loaded, a copy hosted by a dealer, retailer or the Z-Wave Alliance was used, and the
 link says so.
+
+### Device troubleshooting
+
+The Troubleshoot tab has guides for common end devices:
+
+- Kwikset SmartCode and Home Connect locks
+- Schlage Connect locks
+- Yale Assure and Real Living locks with a Z-Wave module
+- GE / Jasco (Enbrighten, UltraPro) switches and dimmers
+- Zooz switches, dimmers, relays and sensors
+
+Each guide lists the problems people most often have with that device, with likely causes and what
+to do, plus the button sequences on the device for adding, removing, factory resetting and updating
+it. Mark a node as that device (in the guide, or under *Rename* on the Nodes tab) and the guide shows
+the node's health, delivery rate, signal and current findings next to the advice. As with the
+controller guides, every item links its sources, and the label says when a source is a forum or a
+dealer's copy rather than the maker.
+
+### Acknowledging findings
+
+Once you have dealt with a finding, or decided to live with it, press *Acknowledge* under it. It is
+hidden and left out of the Troubleshoot count and the Overview suggestions. *Acknowledge all* does
+this for every open finding after asking you to confirm. A finding comes back if it gets worse, for
+example from a warning to critical. The health score is not changed: it still describes the network.
+*Show acknowledged* brings them back into view, and *Clear acknowledgements* (also confirmed) undoes
+them all. Acknowledgements are saved per network in `acks.json`, next to `aliases.json`.
 
 ### Aliases
 

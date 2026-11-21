@@ -275,6 +275,42 @@ class ControllerGuides(unittest.TestCase):
         self.assertTrue(all(a in ACTIONS for acts in ISSUE_ACTIONS.values() for a in acts))
         self.assertIn("qolsys", {g["id"] for g in guides})
 
+    def test_device_guides_are_complete(self):
+        from zwlens.device_guides import KINDS, STEPS, catalogue
+        from zwlens.knowledge import BY_ID
+        devices = catalogue()["devices"]
+        self.assertGreaterEqual(len(devices), 5)
+        self.assertEqual(len({d["id"] for d in devices}), len(devices))
+        self.assertIn("kwikset", {d["id"] for d in devices})
+        for d in devices:
+            self.assertIn(d["kind"], KINDS, d["id"])
+            self.assertEqual(set(d["steps"]), set(STEPS), d["id"])
+            self.assertTrue(d["summary"] and d["docs"] and d["quirks"], d["id"])
+            self.assertGreaterEqual(len(d["problems"]), 5, d["id"])
+            self.assertTrue(all(isinstance(m, int) for m in d["manufacturer_ids"]), d["id"])
+            for st in d["steps"].values():
+                self.assertTrue(st["how"])
+                self.assertTrue(st["src"] == "" or st["src"].startswith("https://"), d["id"])
+            for p in d["problems"]:
+                self.assertTrue(p["title"] and p["signs"] and p["causes"] and p["fixes"] and p["src"], p["title"])
+                self.assertTrue(all(u.startswith("https://") for u in p["src"]), p["title"])
+                self.assertTrue(all(k in BY_ID for k in p.get("kb", [])), p["title"])
+            self.assertTrue(all(x["url"].startswith("https://") for x in d["docs"]), d["id"])
+
+    def test_ack_store(self):
+        from zwlens.aliases import AckStore
+        with tempfile.TemporaryDirectory() as d:
+            s = AckStore(Path(d) / "acks.json")
+            s.ack("c0ffee01", {"signal|c0ffee01:3|Weak": "warn", "bad": "nonsense", "": "warn"})
+            again = AckStore(Path(d) / "acks.json")
+            self.assertEqual(again.get("c0ffee01"), {"signal|c0ffee01:3|Weak": "warn"})
+            self.assertEqual(again.get("deadbeef"), {})
+            again.unack("c0ffee01", ["signal|c0ffee01:3|Weak"])
+            self.assertEqual(AckStore(Path(d) / "acks.json").data, {})
+            again.ack("", {"x": "crit"})
+            again.unack("")
+            self.assertEqual(AckStore(Path(d) / "acks.json").data, {})
+
 
 class Help(unittest.TestCase):
     def setUp(self):
@@ -418,6 +454,16 @@ class AliasesAndServer(unittest.TestCase):
                 self.assertFalse(json.loads(call("/api/upload?name=junk.bin", b"\x00\x01\x02", h)[1])["loaded"])
                 self.assertEqual(call("/api/alias", json.dumps({"key": "c0ffee01:9", "name": "<b>Plug</b>"}).encode(), h)[0], 200)
                 self.assertEqual(call("/api/alias", json.dumps({"key": "../x:9", "name": "x"}).encode(), h)[0], 400)
+                ack = {"home": "c0ffee01", "items": {"unreachable|c0ffee01:9|Node 9: # of # failed": "crit"}}
+                self.assertEqual(call("/api/ack", json.dumps(ack).encode(), h)[0], 200)
+                self.assertEqual(call("/api/ack", json.dumps({"home": "../x", "items": {}}).encode(), h)[0], 400)
+                self.assertEqual(session.acks.get("c0ffee01"), ack["items"])
+                self.assertEqual(call("/api/ack", json.dumps({"home": "c0ffee01", "clear": True}).encode(), h)[0], 200)
+                self.assertEqual(session.acks.get("c0ffee01"), {})
+                self.assertEqual(call("/api/device", json.dumps({"key": "c0ffee01:9", "device": "kwikset"}).encode(), h)[0], 200)
+                self.assertEqual(session.aliases.data["c0ffee01:9"].get("device"), "kwikset")
+                self.assertEqual(call("/api/device", json.dumps({"key": "c0ffee01:9", "device": "nope"}).encode(), h)[0], 400)
+                self.assertIn("kwikset", {x["id"] for x in json.loads(call("/api/analysis")[1])["devices"]["devices"]})
                 a = json.loads(call("/api/analysis")[1])
                 self.assertEqual(node(a, 9)["name"], "<b>Plug</b> (#9)")
                 conv = a["conversations"][0]["id"]

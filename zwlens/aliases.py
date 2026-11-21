@@ -75,3 +75,59 @@ class AliasStore:
         tmp = self.path.with_suffix(".tmp")
         tmp.write_text(json.dumps(self.data, indent=2, sort_keys=True), encoding="utf-8")
         os.replace(tmp, self.path)
+
+
+SEVERITIES = ("info", "warn", "crit")
+
+
+class AckStore:
+    """Acknowledged findings, per network: {home: {finding key: severity when acknowledged}}.
+
+    A finding comes back if it gets worse than the severity it had when it was acknowledged.
+    """
+
+    MAX_PER_HOME = 5000
+
+    def __init__(self, path: str | os.PathLike):
+        self.path = Path(path)
+        self._lock = threading.Lock()
+        self.data: dict[str, dict[str, str]] = {}
+        try:
+            loaded = json.loads(self.path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                self.data = {str(h): {str(k): v for k, v in m.items() if v in SEVERITIES}
+                             for h, m in loaded.items() if isinstance(m, dict)}
+        except FileNotFoundError:
+            pass
+        except (OSError, ValueError) as exc:
+            print(f"warning: could not read acknowledgements from {self.path}: {exc}", file=sys.stderr)
+
+    def get(self, home: str) -> dict[str, str]:
+        return dict(self.data.get(home or "*", {}))
+
+    def ack(self, home: str, items: dict[str, str]) -> None:
+        with self._lock:
+            m = self.data.setdefault(home or "*", {})
+            for k, sev in items.items():
+                if sev in SEVERITIES and 0 < len(k) <= 400 and (k in m or len(m) < self.MAX_PER_HOME):
+                    m[k] = sev
+            self._save()
+
+    def unack(self, home: str, keys=None) -> None:
+        """Forget some acknowledgements, or all of them for this network when keys is None."""
+        with self._lock:
+            if keys is None:
+                self.data.pop(home or "*", None)
+            else:
+                m = self.data.get(home or "*", {})
+                for k in keys:
+                    m.pop(k, None)
+                if not m:
+                    self.data.pop(home or "*", None)
+            self._save()
+
+    def _save(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        tmp = self.path.with_suffix(".tmp")
+        tmp.write_text(json.dumps(self.data, indent=2, sort_keys=True), encoding="utf-8")
+        os.replace(tmp, self.path)

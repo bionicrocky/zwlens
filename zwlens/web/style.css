@@ -333,3 +333,11 @@ html.phone .split:not(.has-detail) .convdetail { display: none; }
 html.phone .split.has-detail .convback { display: inline-block; }
 html.phone .convlist, html.phone .chat { max-height: none; }
 html.phone .cols2 > .panel:last-child { order: -1; }
+
+/* Acknowledged findings and device guides */
+.ackbar { margin: 0 0 12px; }
+.finding.acked { opacity: .55; }
+.factions { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 4px; }
+.devprob { border-top: 1px solid var(--line); padding: 8px 0; }
+.devprob summary { cursor: pointer; }
+.devprob ul, .devprob ol { margin: 4px 0 6px; padding-left: 20px; }

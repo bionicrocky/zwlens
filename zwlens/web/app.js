@@ -81,7 +81,7 @@ const hashTab = () => { const h = location.hash.slice(1); return Object.keys(TAB
 function render() {
   if (S.tab !== 'help' && location.hash !== '#' + TAB_HASH[S.tab]) history[location.hash ? 'pushState' : 'replaceState'](null, '', '#' + TAB_HASH[S.tab]);
   document.querySelectorAll('#tabs button').forEach(b => { const on = b.dataset.tab === S.tab; b.classList.toggle('on', on); if (on) b.setAttribute('aria-current', 'page'); else b.removeAttribute('aria-current'); });
-  const all = [...A.issues.flatMap(i => i.findings), ...A.catalog.flatMap(e => e.hits)];
+  const all = allFindings().filter(([i, f]) => !acked(i, f)).map(x => x[1]);
   const nCrit = all.filter(f => f.severity === 'crit').length, nWarn = all.filter(f => f.severity === 'warn').length;
   $('#tabs [data-tab=troubleshoot]').innerHTML = 'Troubleshoot' + (nCrit ? `<span class="count">${nCrit}</span>` : nWarn ? `<span class="count warn">${nWarn}</span>` : '');
   const live = A.live;
@@ -113,7 +113,7 @@ function overview() {
   const busy = n.airtime_pct != null;
   // Group suggestions that share a problem, so five weak nodes read as one item with five nodes.
   const groups = [];
-  for (const s of A.suggestions) {
+  for (const s of A.suggestions.filter(s => !s.issue || !acked(s.issue, { node: s.node, text: s.why, severity: s.severity }))) {
     const key = s.area + '|' + (s.issue || '');  // suggestions arrive worst first, so a group keeps its worst severity
     let g = groups.find(x => x.key === key);
     if (!g) groups.push(g = { key, ...s, whys: [] });
@@ -281,20 +281,111 @@ function convDetail() {
 }
 
 // ---------------------------------------------------------------- troubleshoot
+// Acknowledged findings: hidden and left out of the counts until they get worse. Stored per network on
+// the server. Numbers in the text are ignored (except node numbers), so a finding whose counts tick up
+// stays acknowledged.
+const SEVRANK = { ok: 0, info: 1, warn: 2, crit: 3 };
+const fkey = (issue, f) => `${issue}|${f.node || ''}|${String(f.text).replace(/(?<!node )\d[\d.,]*/gi, '#')}`;
+const acked = (issue, f) => { const s = (A.acks || {})[fkey(issue, f)]; return !!s && SEVRANK[f.severity] <= SEVRANK[s]; };
+function allFindings() {
+  return [...A.issues.flatMap(i => i.findings.map(f => [i.id, f])), ...A.catalog.flatMap(e => e.hits.map(h => ['kb-' + e.id, h]))]
+    .filter(([, f]) => f.severity !== 'ok');
+}
+const openFindings = () => allFindings().filter(([i, f]) => !acked(i, f));
+async function ackPost(body) { await post('/api/ack', { home: A.network.home || '*', ...body }); await load(); }
+function ackButton(issue, f) {
+  const k = fkey(issue, f);
+  return acked(issue, f) ? `<button class="link small" data-act="unack" data-k="${esc(k)}">Acknowledged · undo</button>`
+    : `<button class="link small" data-act="ack" data-k="${esc(k)}" data-sev="${esc(f.severity)}">Acknowledge</button>`;
+}
+const worst = list => list.reduce((w, f) => SEVRANK[f.severity] > SEVRANK[w] ? f.severity : w, 'ok');
+function ackBar() {
+  const all = allFindings(), open = openFindings(), nAck = all.length - open.length;
+  if (!all.length) return '';
+  return `<div class="bar ackbar"><span class="muted grow">${open.length ? `${open.length} open finding${open.length > 1 ? 's' : ''}` : 'Every finding is acknowledged'}${nAck ? ` · ${nAck} acknowledged` : ''}</span>
+    ${nAck ? `<button class="btn" data-act="showack" aria-pressed="${!!S.showAck}">${S.showAck ? 'Hide' : 'Show'} acknowledged</button><button class="btn" data-act="clearack">Clear acknowledgements</button>` : ''}
+    ${open.length ? `<button class="btn primary" data-act="ackall">Acknowledge all (${open.length})</button>` : ''}</div>`;
+}
+
 function troubleshoot() {
   const guide = ctrlGuide();
-  return controllerPanel() + `<p class="muted">The five most common Z-Wave problems, checked against this capture. Each one lists what was found and a guided checklist.</p>` +
+  return controllerPanel() + `<p class="muted">The five most common Z-Wave problems, checked against this capture. Each one lists what was found and a guided checklist.</p>` + ackBar() +
     A.issues.map(iss => {
-      const open = S.open[iss.id] ?? iss.findings.length > 0;
-      const finds = iss.findings.map(f => `<div class="finding">${pill(f.severity)} ${esc(f.text)}<div class="fix"><b>What to do:</b> ${esc(f.fix)}</div>${hubStep(f.action)}
-        ${f.node ? `<button class="link small" data-act="nodeconv" data-id="${esc(f.node.split(':')[1])}">${esc(nameOf(f.node.split(':')[0], +f.node.split(':')[1]))}'s conversations →</button>` : ''}</div>`).join('');
+      const live = iss.findings.filter(f => !acked(iss.id, f));
+      const sev = iss.findings.length && !live.length ? 'ok' : live.length ? worst(live) : iss.severity;
+      const open = S.open[iss.id] ?? live.length > 0;
+      const shown = S.showAck ? iss.findings : live;
+      const finds = shown.map(f => `<div class="finding ${acked(iss.id, f) ? 'acked' : ''}">${pill(f.severity)} ${esc(f.text)}<div class="fix"><b>What to do:</b> ${esc(f.fix)}</div>${hubStep(f.action)}
+        <div class="factions">${f.node ? `<button class="link small" data-act="nodeconv" data-id="${esc(f.node.split(':')[1])}">${esc(nameOf(f.node.split(':')[0], +f.node.split(':')[1]))}'s conversations →</button>` : ''}${ackButton(iss.id, f)}</div></div>`).join('')
+        + (shown.length < iss.findings.length ? `<p class="muted small">${iss.findings.length - shown.length} acknowledged finding${iss.findings.length - shown.length > 1 ? 's' : ''} hidden.</p>` : '');
       const steps = iss.steps.map((s, i) => { const k = iss.id + ':' + i; return `<li class="${done[k] ? 'done' : ''}"><label><input type="checkbox" data-act="step" data-k="${esc(k)}" ${done[k] ? 'checked' : ''}> ${esc(s)}</label></li>`; }).join('');
-      return `<div class="panel issue ${iss.severity}" id="issue-${esc(iss.id)}">
-        <div class="head" data-act="toggle" data-id="${esc(iss.id)}"><h3><button class="ihead" aria-expanded="${open}">${esc(iss.title)}</button></h3><span class="muted small">${esc(iss.summary)}</span>${pill(iss.severity)}<span class="muted">${open ? '▾' : '▸'}</span></div>
+      return `<div class="panel issue ${sev}" id="issue-${esc(iss.id)}">
+        <div class="head" data-act="toggle" data-id="${esc(iss.id)}"><h3><button class="ihead" aria-expanded="${open}">${esc(iss.title)}</button></h3><span class="muted small">${esc(iss.summary)}</span>${iss.findings.length && !live.length ? pill('plain', 'Acknowledged') : pill(sev)}<span class="muted">${open ? '▾' : '▸'}</span></div>
         ${open ? `<p class="muted small" style="margin-top:6px">${esc(iss.what)}</p>${finds}
           <h3 style="margin-top:12px">Troubleshooting checklist</h3><ol class="steps">${steps}</ol>
           ${guide ? `<h3 style="margin-top:12px">How to do this on ${esc(guide.name)}</h3>${howTo(guide, A.guides.issue_actions[iss.id] || []) || '<p class="muted small">No documented steps for this controller.</p>'}` : ''}` : ''}</div>`;
-    }).join('') + library();
+    }).join('') + devicePanel() + library();
+}
+
+// ---------------------------------------------------------------- device guides
+// Troubleshooting for common end devices. A node can be marked as one of them (saved with its alias),
+// and the guide then shows that node's status and findings next to the maker's advice.
+const devGuide = id => (A.devices?.devices || []).find(d => d.id === id);
+const nodeDevice = n => { const al = A.aliases[n.key] || A.aliases['*:' + n.id] || {}; return al.device || ''; };
+function devOptions(sel, placeholder) {
+  const D = A.devices || { devices: [], kinds: {} };
+  const groups = Object.entries(D.kinds).map(([k, label]) => {
+    const list = D.devices.filter(d => d.kind === k).sort((a, b) => a.name.localeCompare(b.name));
+    return list.length ? `<optgroup label="${esc(label)}">${list.map(d => `<option value="${esc(d.id)}" ${d.id === sel ? 'selected' : ''}>${esc(d.name)}</option>`).join('')}</optgroup>` : '';
+  }).join('');
+  return `<option value="">${esc(placeholder)}</option>${groups}`;
+}
+function devStep(d, id) {
+  const a = d.steps[id]; if (!a) return '';
+  return `<div class="finding"><b>${esc(A.devices.steps[id])}</b><div>${esc(a.how)}</div>${a.note ? `<div class="fix">${esc(a.note)}</div>` : ''}
+    ${a.src && /^https:\/\//.test(a.src) ? `<div class="src"><a href="${esc(a.src)}" target="_blank" rel="noopener noreferrer">Source</a></div>` : ''}</div>`;
+}
+function devNodeCard(n) {
+  const finds = allFindings().filter(([, f]) => f.node === n.key || f.node === (n.home || '') + ':' + n.id).filter(([i, f]) => !acked(i, f));
+  const facts = [n.power, n.security !== 'Unknown' ? n.security : '', n.attempts ? `${Math.round(n.fail_rate * 100)}% of ${n.attempts} messages undelivered` : 'no messages to it seen',
+    n.rssi != null ? `heard at ${n.rssi.toFixed(0)} dBm` : '', n.battery ? `battery ${n.battery}` : ''].filter(Boolean);
+  return `<div class="finding"><b>${esc(n.name)}</b> ${pill(HEALTH[n.health] || 'plain', n.health)} <span class="muted small">${esc(facts.join(' · '))}</span>
+    ${finds.map(([i, f]) => `<div class="small" style="margin-top:4px">${pill(f.severity)} ${esc(f.text)} <button class="link small" data-act="issue" data-id="${esc(i)}">${i.startsWith('kb-') ? 'Causes and fixes' : 'Troubleshooter'} →</button></div>`).join('')}
+    <div class="factions"><button class="link small" data-act="nodeconv" data-id="${n.id}">Conversations →</button><button class="link small" data-act="setdev" data-key="${esc(n.key)}" data-dev="">Unmark</button></div></div>`;
+}
+function devicePanel() {
+  const D = A.devices; if (!D || !D.devices.length) return '';
+  const mine = A.nodes.filter(n => !n.foreign && nodeDevice(n));
+  if (S.dev == null) S.dev = mine.length ? nodeDevice(mine[0]) : '';
+  const d = devGuide(S.dev);
+  const locks = A.nodes.filter(n => !n.foreign && !nodeDevice(n) && /lock/i.test(n.type));
+  let body = '';
+  if (d) {
+    const nodesOf = mine.filter(n => nodeDevice(n) === d.id);
+    const looks = n => (d.kind === 'lock') === /lock/i.test(n.type);  // likely matches first
+    const unmarked = A.nodes.filter(n => !n.foreign && !n.controller && nodeDevice(n) !== d.id).sort((a, b) => looks(b) - looks(a));
+    body = `<p style="margin-top:10px">${esc(d.summary)}</p>
+      <h3 style="margin-top:12px">Your ${esc(d.kind === 'lock' ? 'locks' : 'devices')}</h3>
+      ${nodesOf.map(devNodeCard).join('') || '<p class="muted small">No node is marked as this device yet.</p>'}
+      ${unmarked.length ? `<div class="bar" style="margin:6px 0 0"><select id="devnode" aria-label="Node to mark">${unmarked.map(n => `<option value="${esc(n.key)}">${esc(n.name)}${n.type && n.type !== 'Unknown' ? ' · ' + esc(n.type) : ''}</option>`).join('')}</select>
+        <button class="btn" data-act="markdev">Mark as this device</button></div>` : ''}
+      ${d.quirks.length ? `<div class="warnbox"><b>Good to know</b><ul style="margin:4px 0 0;padding-left:18px">${d.quirks.map(q => `<li>${esc(q)}</li>`).join('')}</ul></div>` : ''}
+      <h3 style="margin-top:12px">Common problems</h3>
+      ${d.problems.map(p => `<details class="devprob"><summary><b>${esc(p.title)}</b></summary>
+        <p class="muted small" style="margin:6px 0">${esc(p.signs)}</p>
+        ${p.causes.length ? `<div class="small muted">Likely causes</div><ul>${p.causes.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
+        ${p.fixes.length ? `<div class="small muted">What to do</div><ol>${p.fixes.map(c => `<li>${esc(c)}</li>`).join('')}</ol>` : ''}
+        ${(p.kb || []).filter(id => A.catalog.some(e => e.id === id)).length ? `<div class="small">Related in the library: ${(p.kb || []).map(id => A.catalog.find(e => e.id === id)).filter(Boolean).map(e => `<button class="link small" data-act="issue" data-id="kb-${esc(e.id)}">${esc(e.title)}</button>`).join(' · ')}</div>` : ''}
+        ${p.src.length ? `<div class="src muted">Sources: ${p.src.filter(u => /^https:\/\//.test(u)).map((u, i) => `<a href="${esc(u)}" target="_blank" rel="noopener noreferrer">[${i + 1}]</a>`).join(' ')}</div>` : ''}
+      </details>`).join('')}
+      <details style="margin-top:10px"><summary>Add, remove, reset and update on the device</summary>${Object.keys(D.steps).map(id => devStep(d, id)).join('')}</details>
+      ${d.docs.length ? `<p class="small muted" style="margin-top:8px">Documentation: ${d.docs.filter(x => /^https:\/\//.test(x.url)).map(x => `<a href="${esc(x.url)}" target="_blank" rel="noopener noreferrer">${esc(x.label)}</a>`).join(' · ')}</p>` : ''}`;
+  } else {
+    body = `<p class="muted small" style="margin-top:8px">Pick a device to see its common problems, causes and fixes, and how to add, remove or reset it.${locks.length ? ` This capture has ${locks.length} node${locks.length > 1 ? 's' : ''} that look like locks (${locks.map(n => esc(n.name)).join(', ')}).` : ''}</p>`;
+  }
+  return `<div class="panel" id="devices"><h2>Device troubleshooting</h2>
+    <div class="bar" style="margin:0"><select id="devpick" aria-label="Device">${devOptions(S.dev, 'Choose a device…')}</select>
+    <span class="muted small">Advice is quoted from the makers' manuals and support pages, with forum reports where the maker is silent.</span></div>${body}</div>`;
 }
 
 function ctrlGuide() { return A.guides.controllers.find(c => c.id === S.ctrl); }
@@ -347,14 +438,16 @@ function library() {
   const list = A.catalog.filter(e => (!S.kcat || e.category === S.kcat || (S.kcat === '!detected' && e.hits.length))
     && (!q || (e.title + ' ' + e.what + ' ' + e.causes.join(' ') + ' ' + e.fixes.join(' ')).toLowerCase().includes(q)));
   const found = A.catalog.filter(e => e.hits.length);
-  const statusPill = e => e.hits.length ? pill(e.hits.some(h => h.severity === 'crit') ? 'crit' : e.hits.some(h => h.severity === 'warn') ? 'warn' : 'info', 'Detected')
+  const liveHits = e => e.hits.filter(h => !acked('kb-' + e.id, h));
+  const statusPill = e => liveHits(e).length ? pill(worst(liveHits(e)) === 'ok' ? 'info' : worst(liveHits(e)), 'Detected')
+    : e.hits.length ? pill('plain', 'Acknowledged')
     : e.status === 'clear' ? pill('ok', 'Not seen') : pill('plain', 'Check by hand');
-  const items = list.map(e => `<div class="kbitem ${e.hits.length ? 'hit' : ''}" id="issue-kb-${esc(e.id)}">
+  const items = list.map(e => `<div class="kbitem ${liveHits(e).length ? 'hit' : ''}" id="issue-kb-${esc(e.id)}">
       <div class="bar" style="margin-bottom:4px"><h3 class="grow" style="margin:0">${esc(e.title)}</h3>${statusPill(e)}</div>
       <div class="small muted">${esc(e.category_name)} · checked from ${esc(e.how)}</div>
-      ${e.hits.map(h => `<div class="finding">${pill(h.severity)} ${esc(h.text)}${h.node ? ` <button class="link small" data-act="nodeconv" data-id="${esc(h.node.split(':')[1])}">conversations</button>` : ''}</div>`).join('')}
+      ${(S.showAck ? e.hits : liveHits(e)).map(h => `<div class="finding ${acked('kb-' + e.id, h) ? 'acked' : ''}">${pill(h.severity)} ${esc(h.text)}<div class="factions">${h.node ? `<button class="link small" data-act="nodeconv" data-id="${esc(h.node.split(':')[1])}">conversations</button>` : ''}${h.severity !== 'ok' ? ackButton('kb-' + e.id, h) : ''}</div></div>`).join('')}
       <p style="margin-top:6px">${esc(e.what)}</p>
-      <details ${e.hits.length ? 'open' : ''}><summary class="small muted">Causes and fixes</summary>
+      <details ${liveHits(e).length ? 'open' : ''}><summary class="small muted">Causes and fixes</summary>
         ${e.causes.length ? `<div class="small muted" style="margin-top:6px">Likely causes</div><ul>${e.causes.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
         ${e.fixes.length ? `<div class="small muted" style="margin-top:6px">What to do</div><ul>${e.fixes.map(c => `<li>${esc(c)}</li>`).join('')}</ul>` : ''}
         ${hubStep(e.action)}
@@ -374,7 +467,7 @@ function nodes() {
   const rows = list.map(n => {
     const al = A.aliases[n.key] || A.aliases['*:' + n.id] || {};
     const row = `<tr>
-      <td><b>${esc(n.name)}</b>${n.foreign ? ' <span class="pill plain">other network</span>' : ''}<div class="small muted">${esc([al.location || n.location, n.product, al.notes].filter(Boolean).join(' · '))}</div></td>
+      <td><b>${esc(n.name)}</b>${n.foreign ? ' <span class="pill plain">other network</span>' : ''}<div class="small muted">${esc([al.location || n.location, n.product || (devGuide(al.device) || {}).name, al.notes].filter(Boolean).join(' · '))}</div></td>
       <td>${esc(n.type)}</td><td>${esc(n.role)}</td><td>${esc(n.power)}${n.battery ? `<div class="small muted">battery ${esc(n.battery)}</div>` : ''}</td>
       <td>${esc(n.security)}</td><td>${pill(HEALTH[n.health] || 'plain', n.health)}</td>
       <td>${n.traffic === 'Chatty' ? pill('warn', 'Chatty') : esc(n.traffic)}</td>
@@ -387,6 +480,7 @@ function nodes() {
       <input type="text" id="al-name" placeholder="Alias, e.g. Kitchen light" value="${esc(al.name || '')}" maxlength="80">
       <input type="text" id="al-loc" placeholder="Location" value="${esc(al.location || '')}" maxlength="80">
       <input type="text" id="al-notes" class="grow" placeholder="Notes" value="${esc(al.notes || '')}" maxlength="200">
+      ${A.devices && A.devices.devices.length ? `<select id="al-dev" data-key="${esc(n.key)}" aria-label="Device model">${devOptions(al.device || '', 'Device: not set')}</select>` : ''}
       <button class="btn primary" data-act="savealias" data-key="${esc(n.key)}">Save</button><button class="btn" data-act="edit" data-key="">Cancel</button>
       <span class="muted small">Leave everything empty to remove the alias.</span></div></td></tr>` : '';
     return row + edit;
@@ -507,7 +601,7 @@ const actions = {
   conv: el => loadConv(+el.dataset.id),
   gotoconv: async el => { S.tab = 'conversations'; S.cq = ''; S.cnode = ''; S.cstatus = ''; await loadConv(+el.dataset.id); },
   raw: el => el.setAttribute('aria-expanded', el.classList.toggle('open')),
-  toggle: el => { const i = A.issues.find(i => i.id === el.dataset.id); S.open[i.id] = !(S.open[i.id] ?? i.findings.length > 0); render(); },
+  toggle: el => { const i = A.issues.find(i => i.id === el.dataset.id); S.open[i.id] = !(S.open[i.id] ?? i.findings.some(f => !acked(i.id, f))); render(); },
   issue: el => { S.tab = 'troubleshoot'; S.open[el.dataset.id] = true; if (el.dataset.id.startsWith('kb-')) { S.kq = ''; S.kcat = ''; } render(); const t = document.getElementById('issue-' + el.dataset.id); if (t) t.scrollIntoView({ block: 'start' }); },
   step: el => { done[el.dataset.k] = el.checked; try { localStorage.setItem('zwlens.done', JSON.stringify(done)); } catch (e) { /* storage unavailable */ } el.closest('li').classList.toggle('done', el.checked); },
   nodeconv: async el => {
@@ -518,6 +612,20 @@ const actions = {
     if (pick) await loadConv(pick.id); else render();
     window.scrollTo(0, 0);
   },
+  ackall: async () => {
+    const open = openFindings();
+    if (!open.length) return;
+    const n = open.length, what = n === 1 ? 'this finding' : `all ${n} findings`;
+    if (!confirm(`Acknowledge ${what}?\n\nThey are hidden and left out of the Troubleshoot count. Any that get worse come back. The health score does not change.\n\nYou can undo this with Clear acknowledgements.`)) return;
+    await ackPost({ items: Object.fromEntries(open.map(([i, f]) => [fkey(i, f), f.severity])) });
+    toast(`${n} finding${n > 1 ? 's' : ''} acknowledged`);
+  },
+  ack: el => ackPost({ items: { [el.dataset.k]: el.dataset.sev } }),
+  unack: el => ackPost({ remove: [el.dataset.k] }),
+  clearack: async () => { if (confirm('Clear every acknowledgement for this network? All findings show again.')) { await ackPost({ clear: true }); toast('Acknowledgements cleared'); } },
+  setdev: async el => { await post('/api/device', { key: el.dataset.key, device: el.dataset.dev }); await load(); },
+  markdev: async () => { const k = $('#devnode').value; if (!k) return; await post('/api/device', { key: k, device: S.dev }); toast('Saved for this node'); await load(); },
+  showack: () => { S.showAck = !S.showAck; render(); },
   convback: () => { S.conv = null; S.convFrames = null; render(); },
   mapnode: el => actions.nodeconv(el),
   edit: el => { S.edit = el.dataset.key || null; render(); const i = $('#al-name'); if (i) i.focus(); },
@@ -560,6 +668,8 @@ document.addEventListener('change', async ev => {
     if (el.id === 'file') { await upload([...el.files]); el.value = ''; }
     if (el.id === 'zport') { await checkPort(el.value.trim()); }
     if (el.id === 'kcat') { S.kcat = el.value; render(); }
+    if (el.id === 'devpick') { S.dev = el.value; render(); }
+    if (el.id === 'al-dev') { await post('/api/device', { key: el.dataset.key, device: el.value }); await load(); }
     if (el.id === 'chip') { await post('/api/settings', { chip: el.value }); toast('Applies to .zlf files you load from now on'); await load(); }
     if (el.id === 'zregion') { await post('/api/live/region', { id: +el.value }); toast('Switching region…'); setTimeout(() => load().catch(() => {}), 1500); }
     if (el.id === 'ctrl' || el.id === 'nodectrl') await saveCtrl(el.value);

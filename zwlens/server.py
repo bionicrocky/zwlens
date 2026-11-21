@@ -8,10 +8,12 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from . import __version__
-from .aliases import AliasStore
+from .aliases import AckStore, AliasStore
 from .analysis import analyze, report_markdown
 from .controllers import catalogue as controller_catalogue
 from .controllers import guide as controller_guide
+from .device_guides import catalogue as device_catalogue
+from .device_guides import device as device_guide
 from .help_content import help_data
 from .live import LiveClient
 from .parsers import parse_bytes
@@ -33,6 +35,7 @@ class Session:
 
     def __init__(self, aliases: AliasStore | None = None, chip: str = "700"):
         self.aliases = aliases or AliasStore()
+        self.acks = AckStore(self.aliases.path.with_name("acks.json"))
         self.chip = chip
         self.lock = threading.RLock()
         self.captures: list[dict] = []
@@ -123,6 +126,8 @@ class Session:
             out["alias_file"] = str(self.aliases.path)
             out["guides"] = controller_catalogue()
             home, ctrl = a["network"].get("home") or "", a["network"].get("controller")
+            out["acks"] = self.acks.get(home)
+            out["devices"] = device_catalogue()
             model = self.aliases.model(home, ctrl)
             g = controller_guide(model)
             out["controller_model"] = model if (g or model == "other") else None
@@ -271,6 +276,30 @@ def make_handler(session: Session, allowed_hosts: set | None):
                     if model and model != "other" and controller_guide(model) is None:
                         return self._json({"error": "unknown controller model"}, 400)
                     session.aliases.update(f"{home}:{node}", model=model)
+                    session.bump()
+                elif u.path == "/api/device":
+                    key = str(data.get("key", ""))
+                    home, _, node = key.rpartition(":")
+                    dev = str(data.get("device") or "")
+                    if not valid_key(home, node):
+                        return self._json({"error": "bad node key"}, 400)
+                    if dev and device_guide(dev) is None:
+                        return self._json({"error": "unknown device guide"}, 400)
+                    session.aliases.update(key, device=dev)
+                    session.bump()
+                elif u.path == "/api/ack":
+                    home = str(data.get("home") or "")
+                    if home and not valid_key(home, "0"):
+                        return self._json({"error": "bad network"}, 400)
+                    items = data.get("items") or {}
+                    if not isinstance(items, dict):
+                        return self._json({"error": "items must be an object"}, 400)
+                    if data.get("clear"):
+                        session.acks.unack(home)
+                    elif data.get("remove"):
+                        session.acks.unack(home, [str(k) for k in data["remove"]])
+                    else:
+                        session.acks.ack(home, {str(k): str(v) for k, v in items.items()})
                     session.bump()
                 elif u.path == "/api/live/start":
                     freq = data.get("frequency")
