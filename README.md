@@ -11,8 +11,8 @@
   Silicon Labs Zniffer or other capture software is needed. It also reads saved captures and logs.
 - **It explains what it sees.** Traffic becomes readable conversations; every node is categorised;
   five troubleshooters and a library of 85 known failure modes produce a prioritised to-do list.
-- **It tells you how to fix it on your hub.** Step-by-step menu paths for Home Assistant, Hubitat,
-  SmartThings, Qolsys IQ Panel, 2GIG, Alarm.com / SuretyDIY and Ring.
+- **It tells you how to fix it on your hub.** Step-by-step menu paths for 17 controllers, from
+  Home Assistant, Hubitat and Homey to Qolsys, Ring, Vivint and ADT security panels.
 - **Nothing to install but Python.** No packages, no build step, no account. It runs on Linux, macOS
   and Windows, entirely on your computer; captures never leave it.
 
@@ -112,17 +112,34 @@ routes, seeing routes and signal, getting logs, changing device settings, and fi
 Pick *Not listed* if your controller is not covered, and zwlens sticks to general advice.
 Guides cover:
 
+**Home automation hubs**
+
 - Home Assistant (Z-Wave JS / Z-Wave JS UI)
 - Hubitat Elevation
 - SmartThings / Aeotec Smart Home Hub
+- Homey Pro (2019 / 2023) and Homey Bridge
+- FIBARO Home Center 3 / HC3 Lite / Yubii Home
+- Ezlo / Vera (VeraPlus, VeraEdge, Vera Secure, Ezlo Plus, Ezlo Secure, Ezlo Atom)
+- Z-Way by Z-Wave.Me (RaZberry, Z-Station, UZB)
+- HomeSeer HS4 / HomeTroller (Z-Wave Plus plug-in, Z-NET)
+- openHAB (Z-Wave binding)
+- Control4 (CORE 3 / CORE 5, CA-1, EA series) with Composer Pro
+
+**Security panels**
+
 - Qolsys IQ Panel 2 / 2+ / 4 (Alarm.com)
 - 2GIG GC2 / GC3 / Edge (Alarm.com)
 - The Alarm.com website and app, and SuretyDIY
 - Ring Alarm Base Station
+- Resideo / Honeywell Home ProSeries (PROA7PLUS / PROA7) and Lyric Controller
+- Vivint Smart Hub (V-SH1)
+- ADT Command / ADT+ (ADT Base)
 
 Menu paths are quoted from the makers' documentation, with a source link on each item. Firmware
 updates move menus, so check the linked page if something does not match. Where a maker documents
-nothing (Ring and SmartThings expose very little), the guide says so.
+nothing (Ring and SmartThings expose very little), the guide says so. When a maker's own manual
+could not be loaded, a copy hosted by a dealer, retailer or the Z-Wave Alliance was used, and the
+link says so.
 
 ### Aliases
 

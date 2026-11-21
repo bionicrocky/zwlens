@@ -255,8 +255,8 @@ SECTIONS = [
         "summary": "Exact menu paths for your hub, next to every checklist.",
         "body": [
             "Advice such as \"rebuild routes\" or \"re-interview the node\" is only useful if you know where "
-            "that is on your hub. At the top of **Troubleshoot**, choose your controller: Home Assistant, "
-            "Hubitat, SmartThings, Qolsys IQ Panel, 2GIG, Alarm.com / SuretyDIY or Ring.",
+            "that is on your hub. At the top of **Troubleshoot**, choose your controller from 17 hubs and "
+            "security panels, from Home Assistant, Hubitat and Homey to Qolsys, Ring, Vivint and ADT.",
             "Each troubleshooter then shows *How to do this on…* with the menu path, quoted from the "
             "maker's documentation, and a link to the source. *Good to know* lists the hub's quirks, such as "
             "operations it does not offer.",

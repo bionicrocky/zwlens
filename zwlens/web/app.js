@@ -299,7 +299,12 @@ function troubleshoot() {
 
 function ctrlGuide() { return A.guides.controllers.find(c => c.id === S.ctrl); }
 function ctrlOptions(placeholder) {
-  return `<option value="">${esc(placeholder)}</option>${A.guides.controllers.map(c => `<option value="${esc(c.id)}" ${c.id === S.ctrl ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}
+  const opt = c => `<option value="${esc(c.id)}" ${c.id === S.ctrl ? 'selected' : ''}>${esc(c.name)}</option>`;
+  const group = (kind, label) => {
+    const list = A.guides.controllers.filter(c => (c.kind || 'hub') === kind).sort((a, b) => a.name.localeCompare(b.name));
+    return list.length ? `<optgroup label="${label}">${list.map(opt).join('')}</optgroup>` : '';
+  };
+  return `<option value="">${esc(placeholder)}</option>${group('hub', 'Home automation hubs')}${group('panel', 'Security panels')}
     <option value="other" ${S.ctrl === 'other' ? 'selected' : ''}>Not listed</option>`;
 }
 async function saveCtrl(model) {

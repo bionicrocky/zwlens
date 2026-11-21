@@ -263,9 +263,10 @@ class ControllerGuides(unittest.TestCase):
     def test_guides_are_complete(self):
         from zwlens.controllers import ACTIONS, ISSUE_ACTIONS, catalogue
         guides = catalogue()["controllers"]
-        self.assertGreaterEqual(len(guides), 5)
+        self.assertGreaterEqual(len(guides), 17)
         self.assertEqual(len({g["id"] for g in guides}), len(guides))
         for g in guides:
+            self.assertIn(g.get("kind"), ("hub", "panel"), g["id"])
             self.assertEqual(set(g["actions"]), set(ACTIONS), g["id"])
             self.assertTrue(g["summary"] and g["docs"], g["id"])
             for act in g["actions"].values():
