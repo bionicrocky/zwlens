@@ -9,8 +9,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from zwlens.parsers.zlf import write_zlf  # noqa: E402
-from zwlens.sample_data import sdr_text, sniffer_entries, zwavejs_log  # noqa: E402,F401
+from seewave.parsers.zlf import write_zlf  # noqa: E402
+from seewave.sample_data import sdr_text, sniffer_entries, zwavejs_log  # noqa: E402,F401
 
 
 def main():

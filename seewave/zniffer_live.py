@@ -304,7 +304,7 @@ class ZnifferClient:
         self._port = None
         self._stream = ZnifferStream()
         self._stop = False
-        self._thread = threading.Thread(target=self._run, daemon=True, name="zwlens-zniffer")
+        self._thread = threading.Thread(target=self._run, daemon=True, name="seewave-zniffer")
         self._thread.start()
 
     def status(self) -> dict:

@@ -175,7 +175,7 @@ def valid_key(home: str, node: str) -> bool:
 
 def make_handler(session: Session, allowed_hosts: set | None):
     class Handler(BaseHTTPRequestHandler):
-        server_version = "zwlens/" + __version__
+        server_version = "SeeWave/" + __version__
 
         def log_message(self, *args):  # keep the console quiet
             pass
@@ -231,7 +231,7 @@ def make_handler(session: Session, allowed_hosts: set | None):
                     self.send_response(200)
                     body = write_zlf(entries)
                     self.send_header("Content-Type", "application/octet-stream")
-                    self.send_header("Content-Disposition", 'attachment; filename="zwlens-capture.zlf"')
+                    self.send_header("Content-Disposition", 'attachment; filename="seewave-capture.zlf"')
                     self.send_header("Content-Length", str(len(body)))
                     self.end_headers()
                     return self.wfile.write(body)
@@ -244,7 +244,7 @@ def make_handler(session: Session, allowed_hosts: set | None):
 
         def do_POST(self):
             # A custom header forces a CORS preflight, which we never grant, so other sites cannot post here.
-            if not self._host_ok() or self.headers.get("X-ZWLens") != "1":
+            if not self._host_ok() or self.headers.get("X-SeeWave") != "1":
                 return self._json({"error": "forbidden"}, 403)
             u = urlparse(self.path)
             try:

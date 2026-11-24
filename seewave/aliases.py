@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import sys
 import threading
 from pathlib import Path
@@ -15,7 +16,13 @@ def default_path() -> Path:
         base = Path.home() / "Library" / "Application Support"
     else:
         base = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
-    return base / "zwlens" / "aliases.json"
+    new, old = base / "seewave", base / "zwlens"  # the app was called zwlens before
+    if not new.exists() and old.is_dir():
+        try:
+            shutil.copytree(old, new)
+        except OSError:
+            return old / "aliases.json"
+    return new / "aliases.json"
 
 
 class AliasStore:

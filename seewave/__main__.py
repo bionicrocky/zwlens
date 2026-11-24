@@ -1,4 +1,4 @@
-"""Command line entry point: `python -m zwlens serve` or `python -m zwlens analyze`."""
+"""Command line entry point: `python -m seewave serve` or `python -m seewave analyze`."""
 from __future__ import annotations
 
 import argparse
@@ -20,7 +20,7 @@ def main(argv=None) -> int:
             stream.reconfigure(errors="replace")
         except (AttributeError, ValueError):
             pass
-    p = argparse.ArgumentParser(prog="zwlens", description="Z-Wave traffic analyzer")
+    p = argparse.ArgumentParser(prog="seewave", description="Z-Wave traffic analyzer")
     p.add_argument("--version", action="version", version=__version__)
     sub = p.add_subparsers(dest="cmd")
 
@@ -105,7 +105,7 @@ def main(argv=None) -> int:
         return 1
     shown = "localhost" if args.host in ("127.0.0.1", "0.0.0.0") else args.host
     url = f"http://{shown}:{httpd.server_address[1]}/"
-    print(f"zwlens {__version__} running at {url}  (Ctrl+C to stop)")
+    print(f"SeeWave {__version__} running at {url}  (Ctrl+C to stop)")
     if args.host not in ("127.0.0.1", "localhost", "::1"):
         print("warning: listening on a non-loopback address; anyone who can reach it can load captures.")
     if not args.no_browser:

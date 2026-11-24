@@ -1,13 +1,13 @@
-# zwlens
+# SeeWave
 
 [![Tests](https://github.com/bionicrocky/zwlens/actions/workflows/tests.yml/badge.svg)](https://github.com/bionicrocky/zwlens/actions/workflows/tests.yml)
 
-<img src="zwlens/web/logo.svg" width="72" alt="zwlens logo" align="right">
+<img src="seewave/web/logo.svg" width="72" alt="SeeWave logo" align="right">
 
 **Capture and troubleshoot a Z-Wave network from one small app.** Plug in a Zniffer stick, press
-**Capture**, and zwlens shows you the traffic live, tells you what is wrong, and what to fix first.
+**Capture**, and SeeWave shows you the traffic live, tells you what is wrong, and what to fix first.
 
-- **It does the capturing itself.** zwlens talks to the Zniffer stick directly: no Z-Wave JS UI,
+- **It does the capturing itself.** SeeWave talks to the Zniffer stick directly: no Z-Wave JS UI,
   Silicon Labs Zniffer or other capture software is needed. It also reads saved captures and logs.
 - **It explains what it sees.** Traffic becomes readable conversations; every node is categorised;
   five troubleshooters and a library of 85 known failure modes produce a prioritised to-do list.
@@ -17,22 +17,22 @@
 - **Nothing to install but Python.** No packages, no build step, no account. It runs on Linux, macOS
   and Windows, entirely on your computer; captures never leave it.
 
-![zwlens overview: health score, network category, network map and prioritised suggestions](docs/screenshot-overview.png)
+![SeeWave overview: health score, network category, network map and prioritised suggestions](docs/screenshot-overview.png)
 
 <sub>The Overview tab, showing the bundled sample capture.</sub>
 
 ## Quick start
 
 1. Install [Python 3.9 or newer](https://www.python.org/downloads/) if you do not have it.
-2. Download zwlens: `git clone https://github.com/bionicrocky/zwlens.git`, or use
+2. Download SeeWave: `git clone https://github.com/bionicrocky/zwlens.git`, or use
    *Code > Download ZIP* on GitHub and unpack it.
 3. Start it by double-clicking the launcher for your system:
 
    | System | Launcher |
    |---|---|
-   | Windows | `start-zwlens.bat` |
-   | macOS | `start-zwlens.command` |
-   | Linux | `start-zwlens.sh` (or run `python3 -m zwlens` in the folder) |
+   | Windows | `start-seewave.bat` |
+   | macOS | `start-seewave.command` |
+   | Linux | `start-seewave.sh` (or run `python3 -m seewave` in the folder) |
 
 If macOS refuses to open the launcher because it is from an unidentified developer, right-click it
 and choose *Open*. Your browser opens at <http://localhost:8377>. From there **everything is done in the app**:
@@ -41,7 +41,7 @@ and choose *Open*. Your browser opens at <http://localhost:8377>. From there **e
 |---|---|
 | Capture live from a Zniffer stick | **Sources** > *Live from a Zniffer stick* > pick the port > **Capture** |
 | Change the stick's radio region | The *Radio region* list that appears once capturing |
-| Free a stick another program is using | zwlens names the program and offers **Stop it and capture** |
+| Free a stick another program is using | SeeWave names the program and offers **Stop it and capture** |
 | Open a saved capture or log | Drop the file anywhere on the page |
 | Follow a Z-Wave JS / Home Assistant controller | **Sources** > *Live from a controller* > **Connect** |
 | Try it with no hardware | **Try with sample data** |
@@ -63,15 +63,15 @@ Two things the app cannot do for you, once per computer:
 <summary>Command-line options, for scripts and servers</summary>
 
 ```
-python3 -m zwlens serve capture.zlf zwavejs.log     # load files at startup
-python3 -m zwlens serve --zniffer /dev/ttyACM0      # start capturing immediately
-python3 -m zwlens serve --live ws://localhost:3000  # follow a Z-Wave JS server (read-only)
-python3 -m zwlens serve --no-browser --port 9000    # headless
-python3 -m zwlens ports                             # list serial ports
-python3 -m zwlens analyze capture.zlf               # print a report and exit (--format json)
+python3 -m seewave serve capture.zlf zwavejs.log     # load files at startup
+python3 -m seewave serve --zniffer /dev/ttyACM0      # start capturing immediately
+python3 -m seewave serve --live ws://localhost:3000  # follow a Z-Wave JS server (read-only)
+python3 -m seewave serve --no-browser --port 9000    # headless
+python3 -m seewave ports                             # list serial ports
+python3 -m seewave analyze capture.zlf               # print a report and exit (--format json)
 ```
 
-`pip install .` is optional and adds a `zwlens` command.
+`pip install .` is optional and adds a `seewave` command.
 
 </details>
 
@@ -85,7 +85,7 @@ python3 -m zwlens analyze capture.zlf               # print a report and exit (-
 | **Nodes** | Every node categorised by type, role, power source, security, health and traffic. *Rename* gives a node an alias, location and notes, and marks which device it is. |
 | **Frames** | Every decoded frame, searchable, with raw bytes. |
 | **Sources** | Load files, start a live capture, save a capture as `.zlf`, export a report. |
-| **Help** | A searchable guide to using zwlens and to how Z-Wave works (mesh, routing, signal, sleeping and FLiRS devices, S0/S2, Long Range and more), a glossary, and answers to "why does zwlens say…". Small **?** buttons beside the health score, signal, routes, security and FLiRS open the matching topic; topics have links such as `#help/routing`. |
+| **Help** | A searchable guide to using SeeWave and to how Z-Wave works (mesh, routing, signal, sleeping and FLiRS devices, S0/S2, Long Range and more), a glossary, and answers to "why does SeeWave say…". Small **?** buttons beside the health score, signal, routes, security and FLiRS open the matching topic; topics have links such as `#help/routing`. |
 
 ### Known-issue library
 
@@ -105,12 +105,12 @@ exhaustive, and entries without a detector are reference material only.
 ### Controller guides
 
 Choose your controller model once, under **Nodes** > *Controller model* (or at the top of the
-Troubleshoot tab). zwlens saves it for that network, and from then on every piece of advice shows
+Troubleshoot tab). SeeWave saves it for that network, and from then on every piece of advice shows
 how to carry it out on your hub, right under the advice itself: each troubleshooter finding, each
 suggestion on the Overview, and each entry in the known-issue library. The Troubleshoot tab also
 lists every direction for your hub: adding and removing devices, removing dead nodes, rebuilding
 routes, seeing routes and signal, getting logs, changing device settings, and firmware and backup.
-Pick *Not listed* if your controller is not covered, and zwlens sticks to general advice.
+Pick *Not listed* if your controller is not covered, and SeeWave sticks to general advice.
 Guides cover:
 
 **Home automation hubs**
@@ -170,8 +170,8 @@ them all. Acknowledgements are saved per network in `acks.json`, next to `aliase
 
 ### Aliases
 
-Aliases are stored in `aliases.json` in your user configuration folder (`~/.config/zwlens` on Linux,
-`~/Library/Application Support/zwlens` on macOS, `%APPDATA%\zwlens` on Windows) and are reused for
+Aliases are stored in `aliases.json` in your user configuration folder (`~/.config/seewave` on Linux,
+`~/Library/Application Support/seewave` on macOS, `%APPDATA%\seewave` on Windows) and are reused for
 every capture of the same network. Use `--aliases PATH` to keep them elsewhere.
 
 ## Data sources
@@ -181,7 +181,7 @@ every capture of the same network. Use `--aliases PATH` to keep them elsewhere.
 | **Live Zniffer stick** | The stick's serial port (`/dev/ttyACM0`, `COM5`) | Sees everything on air. See [Zniffer hardware](#zniffer-hardware). |
 | **Zniffer captures** | `.zlf` files from Z-Wave JS UI or the Silicon Labs Zniffer | Z-Wave JS UI saves them as `zniffer_capture_<date>.zlf` in its store folder. |
 | **Z-Wave JS logs** | Driver log files from Z-Wave JS, Z-Wave JS UI or the Home Assistant add-on | Set the driver log level to `debug` so commands and transmit reports are logged. |
-| **Live Z-Wave JS** | A Z-Wave JS server WebSocket (`ws://host:3000`) | Read-only: zwlens only subscribes to events and logs. Enable the WS server in Z-Wave JS UI under *Settings > Home Assistant*. |
+| **Live Z-Wave JS** | A Z-Wave JS server WebSocket (`ws://host:3000`) | Read-only: SeeWave only subscribes to events and logs. Enable the WS server in Z-Wave JS UI under *Settings > Home Assistant*. |
 | **SDR output** | Text with one frame per line as hex (timestamp and `rssi=` optional), or classic `.pcap` | Frames are located by checksum, so decoder-specific prefixes are tolerated. |
 
 A sniffer and a controller log show different things. A sniffer sees every hop, ACK and
@@ -197,16 +197,16 @@ stick: never convert the one that runs your network.**
 
 | Stick | Status | Notes |
 |---|---|---|
-| **Home Assistant Connect ZWA-2** (800 series) | **Tested with zwlens** | Official web flasher switches between controller and Zniffer firmware. [Product page](https://www.home-assistant.io/connect/zwa-2/) · [Amazon](https://www.amazon.com/dp/B0FL858V4Q) |
+| **Home Assistant Connect ZWA-2** (800 series) | **Tested with SeeWave** | Official web flasher switches between controller and Zniffer firmware. [Product page](https://www.home-assistant.io/connect/zwa-2/) · [Amazon](https://www.amazon.com/dp/B0FL858V4Q) |
 | **Silicon Labs ZGM230-DK2603A** dev kit (800 series) | Should work, not tested here | The device Z-Wave JS recommends; flashed with Simplicity Studio. [Silicon Labs](https://www.silabs.com/development-tools/wireless/z-wave/z-wave-800-dev-kit) |
-| Silicon Labs UZB3 (500 series) | Should work, not tested here | Firmware is hard to obtain, flashing is Windows-only and can brick the stick. White sticks are region-locked. Start zwlens with `--zniffer-chip 500`. |
+| Silicon Labs UZB3 (500 series) | Should work, not tested here | Firmware is hard to obtain, flashing is Windows-only and can brick the stick. White sticks are region-locked. Start SeeWave with `--zniffer-chip 500`. |
 | Silicon Labs UZB-7 (700 series) | Unverified | Z-Wave JS lists it as "may also work". |
 | Zooz ZST39 LR, Zooz ZST10-700, Aeotec Z-Stick 7, Aeotec Z-Stick 10 Pro | **Not supported** | No Zniffer firmware is published for these. They work fine as controllers. |
 
 <!-- If the Amazon link above is replaced with an Associates link, add this line next to it:
      "As an Amazon Associate I earn from qualifying purchases." -->
 
-zwlens speaks the same serial protocol as Z-Wave JS's Zniffer support (115200 baud), so any stick
+SeeWave speaks the same serial protocol as Z-Wave JS's Zniffer support (115200 baud), so any stick
 that works as a Zniffer in Z-Wave JS UI should work here.
 
 ### Putting a Home Assistant Connect ZWA-2 into Zniffer mode
@@ -236,14 +236,14 @@ The network data is not restored: restore a backup or start a new network.
 
 ### Capturing
 
-1. Plug the stick in and open the **Sources** tab. zwlens lists the serial ports it finds; press
+1. Plug the stick in and open the **Sources** tab. SeeWave lists the serial ports it finds; press
    *Rescan* if yours is missing.
 2. Pick the port and press **Capture**. Frames appear in every tab as they arrive.
 3. Check the *Radio region* shown once it connects, and change it there if it does not match your
    network.
 4. Press **Stop** when you have enough, and **Save as .zlf** if you want to keep it.
 
-Only one program can use the stick at a time. If Z-Wave JS UI has it open, zwlens names the
+Only one program can use the stick at a time. If Z-Wave JS UI has it open, SeeWave names the
 program holding the port and offers to stop it, and never sends anything to a busy port. To keep
 Z-Wave JS UI running instead, let it capture and load the `.zlf` files it saves.
 
@@ -256,15 +256,15 @@ is the only position where they say something about what the controller hears.
 - **Battery devices that sleep** only listen briefly after they wake up. Failed commands to them
   between wake-ups are expected.
 - **Locks and other beam-woken (FLiRS) devices** normally fail once, get a wake-up beam, and then
-  answer. zwlens recognises that pattern and does not count it as a failure.
+  answer. SeeWave recognises that pattern and does not count it as a failure.
 - **A sniffer only knows what it hears.** An ACK it missed is reported as missing. If the sniffer
-  hears even the controller weakly, zwlens says so and skips per-node weak-signal findings.
+  hears even the controller weakly, SeeWave says so and skips per-node weak-signal findings.
 - **The health score** starts at 100 and loses points for each finding. Use it to compare captures
   of the same network before and after a change, not as an absolute grade.
 
 ## Limits
 
-- Encrypted payloads (S0/S2) are not decrypted from sniffer or SDR captures. zwlens sees that a
+- Encrypted payloads (S0/S2) are not decrypted from sniffer or SDR captures. SeeWave sees that a
   secure exchange happened, not what was said. Controller logs show the decrypted commands.
 - Zniffer signal levels use a reverse-engineered conversion and are approximate.
 - The 3-channel frame format used in Japan and Korea is not decoded. Long Range frames are decoded
@@ -283,7 +283,7 @@ python3 -m unittest discover -s tests
 GitHub Actions runs the tests and a command-line smoke test on Linux, Windows and macOS for every
 push and pull request (`.github/workflows/tests.yml`).
 
-The code is plain Python in `zwlens/`:
+The code is plain Python in `SeeWave/`:
 
 | File | Purpose |
 |---|---|
@@ -301,7 +301,7 @@ Z-Wave JS log lines, or register a traffic detector with the same id in `knowled
 
 Frame formats and the Zniffer serial protocol follow the open-source
 [Z-Wave JS](https://github.com/zwave-js/zwave-js) project, whose documentation is also the main
-source for the known-issue library. zwlens is not affiliated with Z-Wave JS, Nabu Casa, Silicon
+source for the known-issue library. SeeWave is not affiliated with Z-Wave JS, Nabu Casa, Silicon
 Labs or the Z-Wave Alliance. Z-Wave is a registered trademark of Silicon Laboratories.
 
 ## License

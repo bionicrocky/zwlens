@@ -45,7 +45,7 @@ GUIDES = [
     {
         "id": "home-assistant", "name": "Home Assistant (Z-Wave JS / Z-Wave JS UI)",
         "summary": "The most open option: full access to routes, statistics, logs, device parameters and backups. "
-                   "zwlens can also follow it live, or read its logs and Zniffer captures.",
+                   "SeeWave can also follow it live, or read its logs and Zniffer captures.",
         "quirks": [
             "Do not move the adapter around the house to include devices; include them where they will live.",
             "Rebuilding all routes generates a lot of traffic and should be used sparingly; prefer rebuilding one device.",
@@ -70,7 +70,7 @@ GUIDES = [
                         "Diagnose button runs the Lifeline and Route health checks.", ZUI),
             "logs": A("Z-Wave integration > three-dot menu > Enable debug logging; disabling it downloads the log. In "
                       "Z-Wave JS UI: Settings > Z-Wave > Log enabled, Log To File, Log Level = Debug; the file is "
-                      "zwavejs_<date>.log in store/logs. Load either into zwlens.", ZUI,
+                      "zwavejs_<date>.log in store/logs. Load either into SeeWave.", ZUI,
                       "For a full air capture, set up a second stick under Settings > Zniffer."),
             "config": A("Device page > Configure for parameters. Polling in Z-Wave JS UI: Settings > General > Device "
                         "values configuration > New value > Enable Poll.", HA),
@@ -106,7 +106,7 @@ GUIDES = [
                         "and Route (hops and speed). View device graph and View device topology draw the mesh.", HE_ZD,
                         "Long Range nodes have no neighbour or route statistics."),
             "logs": A("Settings > Z-Wave Details > View Logs shows live routing, signal and channel information.",
-                      HE_ZD, "No log file export or Zniffer mode is documented; use a separate Zniffer stick with zwlens."),
+                      HE_ZD, "No log file export or Zniffer mode is documented; use a separate Zniffer stick with SeeWave."),
             "config": A(NONE + " Parameters are normally on the device's own page, depending on its driver."),
             "firmware": A("The hub's radio: a Firmware update button appears on Z-Wave Details when one is available. "
                           "Devices: the Device firmware updater app > Start update.", HE_ZD,
@@ -120,7 +120,7 @@ GUIDES = [
         "summary": "Simple to use but shows little: there is a network repair and an exclusion tool, and almost no "
                    "official routing or log information.",
         "quirks": [
-            "No official way to see routes, signal or Z-Wave logs. A Zniffer stick with zwlens fills that gap.",
+            "No official way to see routes, signal or Z-Wave logs. A Zniffer stick with SeeWave fills that gap.",
             "Community reports say the Advanced Web App (my.smartthings.com/advanced) shows a device's last route.",
             "Devices joined before the hub supported S2 stay on S0 until they are excluded and re-included.",
             "No Z-Wave network backup is documented; 'Replace Hub' moves devices to a new hub instead.",
@@ -175,7 +175,7 @@ GUIDES = [
                         "(acknowledged and failed counts), Z-Wave Diagnostics (map and last working route), and "
                         "Advanced Z-Wave Diagnostics (Network Health Test, Repeater Test, Last Working Route).", IQ4),
             "logs": A("Advanced Settings: Upload logs to the server, and Log Level.", IQ4,
-                      "Logs go to Qolsys and your dealer, not to you. For your own view, use a Zniffer stick with zwlens."),
+                      "Logs go to Qolsys and your dealer, not to you. For your own view, use a Zniffer stick with SeeWave."),
             "config": A(QOLSYS_PATH + " > View/Edit Associations > View > Edit > Save.", IQ4,
                         "Device parameters and wake-up intervals are not available on the panel; ask your dealer."),
             "firmware": A("Settings > Advanced Settings > Upgrade Software > Upgrade Using Network.", IQ4,
@@ -211,7 +211,7 @@ GUIDES = [
                          "Toolbox > Rediscover Network.", EDGE_SH, "Whole network only."),
             "routes": A("Smart Home Settings > Check Network lists unresponsive and failed nodes. Routes, neighbours "
                         "and signal levels are not shown.", GC3,
-                        "A Zniffer stick with zwlens is the only way to see routing on these panels."),
+                        "A Zniffer stick with SeeWave is the only way to see routing on these panels."),
             "logs": A(NONE),
             "config": A("GC3 only: View All Devices > the device's menu > Configure > Set Value > Set, and Device "
                         "Association > Manage > Edit Group.", GC3, "Wake-up intervals are not documented."),
@@ -269,7 +269,7 @@ GUIDES = [
         "quirks": [
             "No route rebuild, routing view, logs, device parameters or backup are documented.",
             "'Reset Z-Wave Network' is irreversible.",
-            "With so little built in, a Zniffer stick with zwlens is the practical way to see what the network is doing.",
+            "With so little built in, a Zniffer stick with SeeWave is the practical way to see what the network is doing.",
         ],
         "actions": {
             "include": A("Ring app > Set Up a Device and follow the guided flow; SmartStart devices are added by "
@@ -323,7 +323,7 @@ GUIDES = [
             "logs": A("Developer Tools > Log shows low-level Z-Wave logging. Developer Tools > State shows the Z-Wave "
                       "module state.",
                       "https://products.z-wavealliance.org/wp-content/uploads/products/80647/HomeyPro-Z-WaveUserManual-1.5.pdf",
-                      "No log download is documented. For a full air capture, use a Zniffer stick with zwlens."),
+                      "No log download is documented. For a full air capture, use a Zniffer stick with SeeWave."),
             "config": A("Device settings screen: set the wake-up interval or turn wake-up on or off, and add, edit or "
                         "remove associations (nodes as nodeId or nodeId.endpointId, comma-separated).",
                         "https://products.z-wavealliance.org/wp-content/uploads/products/80647/HomeyPro-Z-WaveUserManual-1.5.pdf",
@@ -665,7 +665,7 @@ GUIDES = [
                         "security. No neighbour or route view.",
                         "https://gvtc.com/GVTC/media/Documents/lyric-controller-user-guide.pdf"),
             "logs": A(NONE + " The guides describe no Z-Wave log or diagnostics export.", "",
-                      "For your own view, use a Zniffer stick with zwlens."),
+                      "For your own view, use a Zniffer stick with SeeWave."),
             "config": A(NONE + " Neither guide has parameter, wake-up or association screens.", "",
                         "The PROA7 can push user codes to Z-Wave locks (Z-Wave Lock Control on each user)."),
             "firmware": A("PROA7: your dealer pushes panel firmware over the air from AlarmNet360. Lyric: Security > "
@@ -711,7 +711,7 @@ GUIDES = [
                         "neighbours, route changes and errors. Press Topology for a map of routing relationships.",
                         "https://www.manualslib.com/manual/1302219/Vivint-V-Sh1.html?page=63#manual"),
             "logs": A(NONE + " Diagnostics results are shown on the panel only.", "",
-                      "For your own view, use a Zniffer stick with zwlens."),
+                      "For your own view, use a Zniffer stick with SeeWave."),
             "config": A(NONE + " The only device setting is Z-Wave > Anti-theft > Enable, for devices that support it.",
                         "https://www.manualslib.com/manual/1302219/Vivint-V-Sh1.html?page=63#manual"),
             "firmware": A("Menu > Settings > Installer Toolbox > Update. If a Broadband Update is available, press Update.",

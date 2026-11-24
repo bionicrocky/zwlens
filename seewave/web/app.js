@@ -13,10 +13,12 @@ const LOGO = document.querySelector('.brand .logo').outerHTML;
 const HEALTH = { Healthy: 'ok', Marginal: 'warn', Failing: 'crit', Unknown: 'plain' };
 
 let A = null, version = 0, names = {};
+// The app was called zwlens before: carry its saved choices over once.
+try { for (const k of ['ctrl', 'done', 'port', 'live']) { const v = localStorage.getItem('zwlens.' + k); if (v !== null && localStorage.getItem('seewave.' + k) === null) localStorage.setItem('seewave.' + k, v); } } catch (e) { /* storage unavailable */ }
 const S = { tab: 'data', conv: null, convFrames: null, cq: '', cnode: '', cstatus: '', fq: '', fnode: '', fkind: '',
-  foff: 0, frames: null, edit: null, open: {}, notes: [], foreign: false, dirty: false, kq: '', kcat: '', ctrl: (() => { try { return localStorage.getItem('zwlens.ctrl') || ''; } catch (e) { return ''; } })(), ports: null, port: null };
+  foff: 0, frames: null, edit: null, open: {}, notes: [], foreign: false, dirty: false, kq: '', kcat: '', ctrl: (() => { try { return localStorage.getItem('seewave.ctrl') || ''; } catch (e) { return ''; } })(), ports: null, port: null };
 let done = {};
-try { done = JSON.parse(localStorage.getItem('zwlens.done') || '{}'); } catch (e) { done = {}; }
+try { done = JSON.parse(localStorage.getItem('seewave.done') || '{}'); } catch (e) { done = {}; }
 
 async function api(path, opt) {
   const r = await fetch(path, opt);
@@ -24,7 +26,7 @@ async function api(path, opt) {
   if (!r.ok) throw new Error(j.error || r.statusText);
   return j;
 }
-const post = (path, body) => api(path, { method: 'POST', headers: { 'X-ZWLens': '1', 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
+const post = (path, body) => api(path, { method: 'POST', headers: { 'X-SeeWave': '1', 'Content-Type': 'application/json' }, body: JSON.stringify(body || {}) });
 
 let toastTimer;
 function toast(msg) {
@@ -402,7 +404,7 @@ async function saveCtrl(model) {
   const key = A.controller_key || { home: '*', node: 0 };
   await post('/api/controller', { home: key.home, node: key.node, model });
   S.ctrl = model;
-  try { localStorage.setItem('zwlens.ctrl', model); } catch (e) { /* storage unavailable */ }
+  try { localStorage.setItem('seewave.ctrl', model); } catch (e) { /* storage unavailable */ }
   const g = ctrlGuide();
   toast(g ? `Troubleshooting steps now show how to do each fix on ${g.name}` : model === 'other' ? 'Showing general advice only' : 'Controller model cleared');
   await load();
@@ -425,7 +427,7 @@ function controllerPanel() {
       ${g.quirks.length ? `<div class="warnbox"><b>Good to know</b><ul style="margin:4px 0 0;padding-left:18px">${g.quirks.map(q => `<li>${esc(q)}</li>`).join('')}</ul></div>` : ''}
       <details style="margin-top:10px"><summary>All directions for ${esc(g.name)}</summary>${howTo(g, Object.keys(G.actions))}</details>
       ${g.docs.length ? `<p class="small muted" style="margin-top:8px">Documentation: ${g.docs.map(d => `<a href="${esc(d.url)}" target="_blank" rel="noopener noreferrer">${esc(d.label)}</a>`).join(' · ')}</p>` : ''}`
-    : S.ctrl === 'other' ? '<p class="muted small" style="margin-top:8px">zwlens has no guide for your controller yet, so the advice below is general. Look for the same actions (rebuild routes, remove failed node, exclusion) in its manual.</p>'
+    : S.ctrl === 'other' ? '<p class="muted small" style="margin-top:8px">SeeWave has no guide for your controller yet, so the advice below is general. Look for the same actions (rebuild routes, remove failed node, exclusion) in its manual.</p>'
     : '<p class="muted small" style="margin-top:8px">Pick your controller (here or on the Nodes tab) to see its exact menu paths under every finding below.</p>';
   return `<div class="panel"><h2>Your controller</h2>
     <div class="bar" style="margin:0"><select id="ctrl" aria-label="Controller model">${ctrlOptions('Choose your controller…')}</select>
@@ -541,7 +543,7 @@ function data() {
   const lsGet = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
   const liveState = live ? `<p>${pill(live.state === 'connected' ? 'ok' : live.state === 'connecting' ? 'info' : 'crit', live.state)} ${live.frames} frames received${live.info ? ' · ' + esc(live.info) : ''}</p>${live.error ? `<div class="warnbox">${esc(live.error)}</div>` : ''}` : '';
   const isZ = live && live.kind === 'zniffer', isWs = live && live.kind === 'live';
-  const portValue = isZ ? live.url : (S.port ? S.port.path : (lsGet('zwlens.port') || (S.ports && S.ports.length === 1 ? S.ports[0].path : '')));
+  const portValue = isZ ? live.url : (S.port ? S.port.path : (lsGet('seewave.port') || (S.ports && S.ports.length === 1 ? S.ports[0].path : '')));
   if (S.port === null && portValue && !live) { S.port = { path: portValue, holders: [] }; checkPort(portValue); }
   const caps = A.captures.map(c => `<tr><td><b>${esc(c.name)}</b>${c.warnings.map(w => `<div class="warnbox">${esc(w)}</div>`).join('')}</td>
     <td>${esc({ log: 'Z-Wave JS log', zniffer: 'Zniffer capture', sdr: 'SDR capture', live: 'Live session' }[c.kind] || c.kind)}</td><td class="num">${c.frames}</td>
@@ -558,7 +560,7 @@ function data() {
     </div>
     <div class="panel"><h2>Live from a controller</h2>
       <p class="muted small">Connects read-only to a Z-Wave JS server (Z-Wave JS UI or the Home Assistant add-on, usually port 3000). Set the driver log level to <b>debug</b> to see commands.</p>
-      <div class="bar"><input type="text" class="grow" id="liveurl" placeholder="ws://localhost:3000" value="${esc(isWs ? live.url : (lsGet('zwlens.live') || 'ws://localhost:3000'))}" ${live ? 'disabled' : ''}>
+      <div class="bar"><input type="text" class="grow" id="liveurl" placeholder="ws://localhost:3000" value="${esc(isWs ? live.url : (lsGet('seewave.live') || 'ws://localhost:3000'))}" ${live ? 'disabled' : ''}>
       ${isWs ? '<button class="btn" data-act="livestop">Disconnect</button>' : `<button class="btn primary" data-act="livestart" ${live ? 'disabled' : ''}>Connect</button>`}</div>
       ${isWs ? liveState : ''}
       <h2 style="margin-top:16px">Live from a Zniffer stick</h2>
@@ -573,8 +575,8 @@ function data() {
         <select id="zregion">${live.regions.map(r => `<option value="${r.id}" ${r.id === live.region ? 'selected' : ''}>${esc(r.name)}</option>`).join('')}</select></div>` : ''}
     </div></div>
     <div class="panel"><div class="bar"><h2 class="grow" style="margin:0">Loaded captures</h2>
-      ${(A.network.sources.zniffer || A.network.sources.sdr) ? '<a class="btn" href="/api/capture.zlf" download="zwlens-capture.zlf">Save as .zlf</a>' : ''}
-      <a class="btn" href="/api/report.md" target="_blank" rel="noopener">Export report</a><a class="btn" href="/api/analysis" download="zwlens-analysis.json">Export JSON</a><button class="btn danger" data-act="clear" ${A.captures.length || live ? '' : 'disabled'}>Clear all…</button></div>
+      ${(A.network.sources.zniffer || A.network.sources.sdr) ? '<a class="btn" href="/api/capture.zlf" download="seewave-capture.zlf">Save as .zlf</a>' : ''}
+      <a class="btn" href="/api/report.md" target="_blank" rel="noopener">Export report</a><a class="btn" href="/api/analysis" download="seewave-analysis.json">Export JSON</a><button class="btn danger" data-act="clear" ${A.captures.length || live ? '' : 'disabled'}>Clear all…</button></div>
       ${caps ? `<table><thead><tr><th>Name</th><th>Type</th><th class="num">Frames</th><th></th></tr></thead><tbody>${caps}</tbody></table>` : '<p class="muted">Nothing loaded yet.</p>'}
     </div>`;
 }
@@ -584,7 +586,7 @@ async function upload(files) {
   S.notes = [];
   for (const file of files) {
     try {
-      const r = await api('/api/upload?name=' + encodeURIComponent(file.name), { method: 'POST', headers: { 'X-ZWLens': '1' }, body: file });
+      const r = await api('/api/upload?name=' + encodeURIComponent(file.name), { method: 'POST', headers: { 'X-SeeWave': '1' }, body: file });
       if (!r.loaded) S.notes.push(`${file.name}: nothing loaded. ${r.warnings.join(' ')}`);
       else toast(`${file.name}: ${r.frames} frames loaded`);
     } catch (e) { S.notes.push(`${file.name}: ${e.message}`); }
@@ -603,7 +605,7 @@ const actions = {
   raw: el => el.setAttribute('aria-expanded', el.classList.toggle('open')),
   toggle: el => { const i = A.issues.find(i => i.id === el.dataset.id); S.open[i.id] = !(S.open[i.id] ?? i.findings.some(f => !acked(i.id, f))); render(); },
   issue: el => { S.tab = 'troubleshoot'; S.open[el.dataset.id] = true; if (el.dataset.id.startsWith('kb-')) { S.kq = ''; S.kcat = ''; } render(); const t = document.getElementById('issue-' + el.dataset.id); if (t) t.scrollIntoView({ block: 'start' }); },
-  step: el => { done[el.dataset.k] = el.checked; try { localStorage.setItem('zwlens.done', JSON.stringify(done)); } catch (e) { /* storage unavailable */ } el.closest('li').classList.toggle('done', el.checked); },
+  step: el => { done[el.dataset.k] = el.checked; try { localStorage.setItem('seewave.done', JSON.stringify(done)); } catch (e) { /* storage unavailable */ } el.closest('li').classList.toggle('done', el.checked); },
   nodeconv: async el => {
     S.tab = 'conversations'; S.cnode = el.dataset.id; S.cq = ''; S.cstatus = '';
     const mine = A.conversations.filter(c => String(c.a) === S.cnode || String(c.b) === S.cnode);
@@ -636,10 +638,10 @@ const actions = {
   sample: async el => { const r = await post('/api/sample', { kind: el.dataset.kind }); toast(`${r.name}: ${r.frames} frames loaded`); await load(); if (S.tab === 'data' || !A.network.frames) { S.tab = 'overview'; } render(); },
   remove: async el => { await post('/api/remove', { id: +el.dataset.id }); await load(); },
   clear: async () => { if (confirm('Remove all loaded captures? Aliases are kept.')) { await post('/api/clear'); S.notes = []; await load(); } },
-  livestart: async () => { const url = $('#liveurl').value.trim(); try { localStorage.setItem('zwlens.live', url); } catch (e) { /* ignore */ } await post('/api/live/start', { url }); await load(); },
+  livestart: async () => { const url = $('#liveurl').value.trim(); try { localStorage.setItem('seewave.live', url); } catch (e) { /* ignore */ } await post('/api/live/start', { url }); await load(); },
   zstart: async () => {
     const url = $('#zport').value.trim();
-    try { localStorage.setItem('zwlens.port', url); } catch (e) { /* ignore */ }
+    try { localStorage.setItem('seewave.port', url); } catch (e) { /* ignore */ }
     await checkPort(url, false);
     if (S.port && S.port.holders.length) { render(); return; }  // busy: show who has it instead of failing
     await post('/api/live/start', { url }); await load();

@@ -3,7 +3,7 @@ requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "zwlens"
+name = "seewave"
 version = "0.1.0"
 description = "Cross-platform Z-Wave traffic analyzer: conversations, troubleshooting, network categorisation"
 readme = "README.md"
@@ -12,10 +12,10 @@ license = {text = "MIT"}
 dependencies = []
 
 [project.scripts]
-zwlens = "zwlens.__main__:main"
+seewave = "seewave.__main__:main"
 
 [tool.setuptools]
-packages = ["zwlens", "zwlens.parsers"]
+packages = ["seewave", "seewave.parsers"]
 
 [tool.setuptools.package-data]
-zwlens = ["web/*"]
+seewave = ["web/*"]

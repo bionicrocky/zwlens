@@ -143,7 +143,7 @@ class LiveClient:
         self.meta: dict[int, dict] = {}
         self._ws: WebSocket | None = None
         self._stop = False
-        self._thread = threading.Thread(target=self._run, daemon=True, name="zwlens-live")
+        self._thread = threading.Thread(target=self._run, daemon=True, name="seewave-live")
         self._thread.start()
 
     @property

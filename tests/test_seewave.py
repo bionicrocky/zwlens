@@ -19,13 +19,13 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "samples"))
 
 import make_samples  # noqa: E402
-from zwlens.aliases import AliasStore  # noqa: E402
-from zwlens.analysis import analyze, report_markdown  # noqa: E402
-from zwlens.live import LiveClient, log_event_to_text  # noqa: E402
-from zwlens.mpdu import build_mpdu, crc16, decode_mpdu, find_mpdu  # noqa: E402
-from zwlens.parsers import parse_bytes  # noqa: E402
-from zwlens.parsers.zlf import write_zlf  # noqa: E402
-from zwlens.server import Session, serve  # noqa: E402
+from seewave.aliases import AliasStore  # noqa: E402
+from seewave.analysis import analyze, report_markdown  # noqa: E402
+from seewave.live import LiveClient, log_event_to_text  # noqa: E402
+from seewave.mpdu import build_mpdu, crc16, decode_mpdu, find_mpdu  # noqa: E402
+from seewave.parsers import parse_bytes  # noqa: E402
+from seewave.parsers.zlf import write_zlf  # noqa: E402
+from seewave.server import Session, serve  # noqa: E402
 
 
 def issue(a, iid):
@@ -182,7 +182,7 @@ class Flirs(unittest.TestCase):
         fr = self.frames([(0.00, build_mpdu(self.H, 1, 6, get, seq=11)), (0.07, build_mpdu(self.H, 1, 6, get, seq=11)),
                           (0.14, build_mpdu(self.H, 1, 6, get, seq=11)),
                           (1.27, build_mpdu(self.H, 1, 6, get, seq=12)), (1.28, build_mpdu(self.H, 6, 1, ack=True, seq=12))])
-        from zwlens.model import Frame
+        from seewave.model import Frame
         fr.insert(3, Frame(kind="beam", dst=6, ts=1000.16, source="zniffer", speed="40k"))
         a = analyze(fr)
         n = node(a, 6)
@@ -195,7 +195,7 @@ class Flirs(unittest.TestCase):
         def routed(seq, hop, ext=b"", flags=0):
             body = bytes([9, flags | (8 if ext else 0), 0x10 | hop, 14]) + ext + bytes([0x98, 0x40])
             head = bytes.fromhex(self.H) + bytes([1, 0x81, seq, 8 + len(body) + 1])
-            from zwlens.mpdu import xor_checksum
+            from seewave.mpdu import xor_checksum
             return head + body + bytes([xor_checksum(head + body)])
         first = decode_mpdu(routed(8, 0, bytes([0x10, 0x40])))
         self.assertEqual((first.wake, first.cc_name, first.cmd_name, first.errors), ("1000 ms", "Security", "Nonce Get", []))
@@ -218,7 +218,7 @@ class Flirs(unittest.TestCase):
 
 class Catalogue(unittest.TestCase):
     def test_entries_are_complete_and_rules_compile(self):
-        from zwlens.knowledge import BY_ID, CATEGORIES, DETECTORS, ENTRIES, match_log
+        from seewave.knowledge import BY_ID, CATEGORIES, DETECTORS, ENTRIES, match_log
         self.assertGreaterEqual(len(ENTRIES), 80)
         self.assertEqual(len(BY_ID), len(ENTRIES))
         for e in ENTRIES:
@@ -261,7 +261,7 @@ class Catalogue(unittest.TestCase):
 
 class ControllerGuides(unittest.TestCase):
     def test_guides_are_complete(self):
-        from zwlens.controllers import ACTIONS, ISSUE_ACTIONS, catalogue
+        from seewave.controllers import ACTIONS, ISSUE_ACTIONS, catalogue
         guides = catalogue()["controllers"]
         self.assertGreaterEqual(len(guides), 17)
         self.assertEqual(len({g["id"] for g in guides}), len(guides))
@@ -276,8 +276,8 @@ class ControllerGuides(unittest.TestCase):
         self.assertIn("qolsys", {g["id"] for g in guides})
 
     def test_device_guides_are_complete(self):
-        from zwlens.device_guides import KINDS, STEPS, catalogue
-        from zwlens.knowledge import BY_ID
+        from seewave.device_guides import KINDS, STEPS, catalogue
+        from seewave.knowledge import BY_ID
         devices = catalogue()["devices"]
         self.assertGreaterEqual(len(devices), 5)
         self.assertEqual(len({d["id"] for d in devices}), len(devices))
@@ -298,7 +298,7 @@ class ControllerGuides(unittest.TestCase):
             self.assertTrue(all(x["url"].startswith("https://") for x in d["docs"]), d["id"])
 
     def test_ack_store(self):
-        from zwlens.aliases import AckStore
+        from seewave.aliases import AckStore
         with tempfile.TemporaryDirectory() as d:
             s = AckStore(Path(d) / "acks.json")
             s.ack("c0ffee01", {"signal|c0ffee01:3|Weak": "warn", "bad": "nonsense", "": "warn"})
@@ -314,7 +314,7 @@ class ControllerGuides(unittest.TestCase):
 
 class Help(unittest.TestCase):
     def setUp(self):
-        from zwlens.help_content import help_data
+        from seewave.help_content import help_data
         self.data = help_data()
 
     def test_sections_are_complete(self):
@@ -379,7 +379,7 @@ class Help(unittest.TestCase):
 
 class ControllerModel(unittest.TestCase):
     def test_action_for_mapping(self):
-        from zwlens.controllers import action_for
+        from seewave.controllers import action_for
         self.assertEqual(action_for("Rebuild routes for this node."), "rebuild")
         self.assertEqual(action_for("Use Remove Failed Node, then rebuild routes."), "remove_failed")
         self.assertEqual(action_for("Exclude this device and re-include it with S2."), "exclude")
@@ -389,7 +389,7 @@ class ControllerModel(unittest.TestCase):
         self.assertIsNone(action_for("Nothing actionable here."))
 
     def test_findings_and_suggestions_carry_actions(self):
-        from zwlens.controllers import ACTIONS
+        from seewave.controllers import ACTIONS
         a = analyze(parse_bytes(write_zlf(make_samples.sniffer_entries()), "a.zlf").frames)
         for iss in a["issues"]:
             for f in iss["findings"]:
@@ -445,7 +445,7 @@ class AliasesAndServer(unittest.TestCase):
                     return e.code, e.read()
 
             try:
-                h = {"X-ZWLens": "1"}
+                h = {"X-SeeWave": "1"}
                 self.assertEqual(call("/")[0], 200)
                 self.assertEqual(call("/api/upload?name=a.zlf", b"x")[0], 403)  # no custom header
                 self.assertEqual(call("/api/analysis", headers={"Host": "evil.example"})[0], 403)
@@ -496,7 +496,7 @@ class AliasesAndServer(unittest.TestCase):
                 call("/api/controller", b'{"home":"c0ffee01","node":1,"model":"other"}', h)
                 self.assertEqual(json.loads(call("/api/analysis")[1])["controller_model"], "other")
                 self.assertEqual(call("/api/nope")[0], 404)
-                self.assertEqual(call("/../zwlens/server.py")[0], 404)
+                self.assertEqual(call("/../seewave/server.py")[0], 404)
             finally:
                 httpd.shutdown()
                 httpd.server_close()
@@ -506,7 +506,7 @@ class Live(unittest.TestCase):
     def test_event_handling(self):
         sent = []
         lc = LiveClient.__new__(LiveClient)  # no socket: drive the message handler directly
-        from zwlens.parsers.zwavejs_log import LogParser
+        from seewave.parsers.zwavejs_log import LogParser
         lc.url, lc._on_change, lc._lock = "ws://test", lambda: None, threading.RLock()
         lc.state, lc.error, lc.meta = "connecting", None, {}
         lc.parser = LogParser("ws://test", "live")
@@ -573,7 +573,7 @@ class Live(unittest.TestCase):
 
 class ZnifferLive(unittest.TestCase):
     def test_stream_splitter(self):
-        from zwlens.zniffer_live import ZnifferStream
+        from seewave.zniffer_live import ZnifferStream
         mpdu = build_mpdu("c0ffee01", 1, 2, b"\x25\x02")
         data = bytes([0x21, 1, 0, 0, 0x21, 0, 50, 0x21, 3, len(mpdu)]) + mpdu
         beam_start = bytes([0x21, 4, 0, 0, 1, 0, 50, 0x55, 9, 0, 0])
@@ -590,7 +590,7 @@ class ZnifferLive(unittest.TestCase):
     @unittest.skipUnless(hasattr(__import__("os"), "openpty"), "needs a pseudo-terminal")
     def test_capture_from_simulated_stick(self):
         import os, time
-        from zwlens.zniffer_live import ZnifferClient, ZnifferStream
+        from seewave.zniffer_live import ZnifferClient, ZnifferStream
         master, slave = os.openpty()
         entries = make_samples.sniffer_entries()[:40]
         seen = []
@@ -656,7 +656,7 @@ class ZnifferLive(unittest.TestCase):
     @unittest.skipUnless(hasattr(__import__("os"), "openpty"), "needs a pseudo-terminal")
     def test_port_in_use_is_refused_without_writing(self):
         import fcntl, os, select
-        from zwlens.zniffer_live import SerialError, open_port
+        from seewave.zniffer_live import SerialError, open_port
         master, slave = os.openpty()
         holder = os.open(os.ttyname(slave), os.O_RDWR | os.O_NOCTTY)
         fcntl.flock(holder, fcntl.LOCK_EX)
@@ -670,7 +670,7 @@ class ZnifferLive(unittest.TestCase):
     @unittest.skipUnless(sys.platform.startswith("linux"), "process lookup is Linux-specific here")
     def test_find_and_stop_port_holder(self):
         import os, subprocess
-        from zwlens.zniffer_live import SerialError, port_holders, release_port
+        from seewave.zniffer_live import SerialError, port_holders, release_port
         master, slave = os.openpty()
         path = os.ttyname(slave)
         holder = subprocess.Popen([sys.executable, "-c",

@@ -1,4 +1,4 @@
-"""In-app help: how to use zwlens, how Z-Wave works, a glossary and answers to "why does zwlens say...".
+"""In-app help: how to use SeeWave, how Z-Wave works, a glossary and answers to "why does SeeWave say...".
 
 Served by GET /api/help and rendered by the Help tab. Plain data only.
 
@@ -13,9 +13,9 @@ from __future__ import annotations
 import re
 
 GROUPS = [
-    ("use", "Using zwlens"),
+    ("use", "Using SeeWave"),
     ("zwave", "How Z-Wave works"),
-    ("faq", "Why does zwlens say…"),
+    ("faq", "Why does SeeWave say…"),
     ("ref", "Reference"),
 ]
 
@@ -49,12 +49,12 @@ HA_ZW = {"label": "Home Assistant: Z-Wave integration", "url": "https://www.home
 HA_ADAPTERS = {"label": "Home Assistant: Z-Wave adapters", "url": "https://www.home-assistant.io/docs/z-wave/controllers/"}
 
 SECTIONS = [
-    # ------------------------------------------------------------------ using zwlens
+    # ------------------------------------------------------------------ using SeeWave
     {
         "id": "start", "group": "use", "title": "Getting started",
-        "summary": "What zwlens does and the three ways to give it something to look at.",
+        "summary": "What SeeWave does and the three ways to give it something to look at.",
         "body": [
-            "zwlens listens to your Z-Wave network, turns the radio traffic into readable conversations, "
+            "SeeWave listens to your Z-Wave network, turns the radio traffic into readable conversations, "
             "and tells you what is wrong and what to fix first. Everything runs on this computer; nothing is "
             "uploaded anywhere.",
             "There are three ways to give it traffic:",
@@ -79,7 +79,7 @@ SECTIONS = [
         "summary": "Plug in a stick, pick its port on the Sources tab, press Capture.",
         "body": [
             "A Zniffer is a Z-Wave USB stick running special firmware that listens to everything on air "
-            "instead of joining your network. zwlens talks to it directly; no other capture software is "
+            "instead of joining your network. SeeWave talks to it directly; no other capture software is "
             "needed. Why you need a separate stick is explained in [[zniffer]].",
             [
                 "Open **Sources** and find *Live from a Zniffer stick*.",
@@ -92,7 +92,7 @@ SECTIONS = [
                 "Press **Stop** when you are done. What was captured is kept as an ordinary capture, so you can "
                 "still browse it and [[saving|save it as .zlf]].",
             ],
-            "**If the port is busy**, zwlens names the program holding it (for example Z-Wave JS UI) and "
+            "**If the port is busy**, SeeWave names the program holding it (for example Z-Wave JS UI) and "
             "offers **Stop it and capture**. That closes the whole program, so only use it if you are sure. "
             "You can also free the stick yourself and press **Check again**.",
             "**One-time setup:** on Linux, allow your user to open serial ports with "
@@ -108,14 +108,14 @@ SECTIONS = [
         "summary": "Connect read-only to Z-Wave JS UI or the Home Assistant add-on.",
         "body": [
             "If your controller runs Z-Wave JS (Z-Wave JS UI, or Home Assistant's Z-Wave integration), "
-            "zwlens can connect to its server and follow the driver log live. Nothing is changed on your "
+            "SeeWave can connect to its server and follow the driver log live. Nothing is changed on your "
             "controller; the connection is read-only.",
             [
                 "Open **Sources** and find *Live from a controller*.",
                 "Enter the server address, usually `ws://localhost:3000` or `ws://<your-server>:3000`, "
                 "and press **Connect**.",
                 "In Z-Wave JS UI or the add-on, set the driver **log level to debug**. At lower levels the log "
-                "does not include the commands, and zwlens has little to work with.",
+                "does not include the commands, and SeeWave has little to work with.",
             ],
             "This view shows only what the controller itself sends and receives. It cannot see messages "
             "between other devices, signal strength of every hop, or traffic from neighbouring networks. For "
@@ -131,13 +131,13 @@ SECTIONS = [
             "on this computer only.",
             [
                 "**Zniffer captures (.zlf)** from the Silicon Labs Zniffer, Z-Wave JS UI's Zniffer page or "
-                "zwlens itself.",
+                "SeeWave itself.",
                 "**Z-Wave JS driver logs** (.log or .txt). Debug level gives the most detail.",
                 "**SDR output**: text containing hex frames, or a .pcap file.",
             ],
             "Several files can be loaded at once; they are analysed together. **Remove** drops one, "
             "**Clear all** drops everything (your [[aliases]] are kept).",
-            "**Signal conversion** on the Sources tab tells zwlens which chip recorded your .zlf files "
+            "**Signal conversion** on the Sources tab tells SeeWave which chip recorded your .zlf files "
             "(700/800-series or 500-series). The two report signal strength on different scales; the wrong "
             "setting makes every signal look too strong or too weak. It applies to files loaded after you "
             "change it.",
@@ -158,7 +158,7 @@ SECTIONS = [
             "role group. *Data rates* shows how much traffic used each [[data-rates|speed]].",
             "**Network map**: the controller sits in the middle; each ring outwards is one more "
             "[[routing|repeater]] hop. Solid lines are routes seen in the traffic; dashed lines mean "
-            "zwlens assumed a direct link because it saw no route. Click a node to see its conversations.",
+            "SeeWave assumed a direct link because it saw no route. Click a node to see its conversations.",
             "**Suggestions** lists what to do, most important first. Each links to the troubleshooter or "
             "known issue that raised it.",
         ],
@@ -168,7 +168,7 @@ SECTIONS = [
         "id": "tab-conversations", "group": "use", "title": "The Conversations tab",
         "summary": "Traffic grouped into exchanges between two nodes, shown like a chat.",
         "body": [
-            "zwlens groups messages between the same two nodes into a conversation until there are a few "
+            "SeeWave groups messages between the same two nodes into a conversation until there are a few "
             "seconds of silence. Pick one on the left to see it message by message on the right.",
             [
                 "Messages from the first node are on the left, replies on the right.",
@@ -221,7 +221,7 @@ SECTIONS = [
             [
                 "**Type**: guessed from the [[command-classes|command classes]] the node uses, for example "
                 "switch, sensor or lock.",
-                "**Role**: *Controller*, *Repeater* (zwlens saw it forward messages for others) or *End device*.",
+                "**Role**: *Controller*, *Repeater* (SeeWave saw it forward messages for others) or *End device*.",
                 "**Power**: *Mains*, *Battery, sleeping* ([[sleeping|wakes up on a schedule]]), or *Battery, "
                 "FLiRS* ([[flirs|woken by a beam]], typical for locks).",
                 "**Security**: *S2*, *S0 (legacy)*, *None*, or *+ unencrypted traffic* when a secure node also "
@@ -281,7 +281,7 @@ SECTIONS = [
             "Aliases are stored in a small file on this computer (its path is shown on the Nodes tab) and are "
             "keyed by [[ids|home ID and node ID]], so they apply to every capture of the same network and "
             "survive **Clear all**.",
-            "When zwlens follows a Z-Wave JS controller it also picks up the names and locations set there.",
+            "When SeeWave follows a Z-Wave JS controller it also picks up the names and locations set there.",
         ],
         "links": [],
     },
@@ -292,7 +292,7 @@ SECTIONS = [
             "Buttons on the **Sources** tab, next to *Loaded captures*:",
             [
                 "**Save as .zlf** saves the radio frames (from a Zniffer or SDR) as a Zniffer capture file. "
-                "Open it later in zwlens, Z-Wave JS UI or the Silicon Labs Zniffer. Log-only traffic is not "
+                "Open it later in SeeWave, Z-Wave JS UI or the Silicon Labs Zniffer. Log-only traffic is not "
                 "included.",
                 "**Export report** opens a Markdown summary: health score, findings and suggestions. Handy to "
                 "paste into a forum post or support ticket.",
@@ -328,7 +328,7 @@ SECTIONS = [
         "id": "privacy", "group": "use", "title": "Privacy and safety",
         "summary": "Captures stay on this computer; the app only listens on this machine.",
         "body": [
-            "zwlens runs a small web server that, by default, only answers this computer "
+            "SeeWave runs a small web server that, by default, only answers this computer "
             "(`localhost`). Captures, logs and aliases never leave it. There is no account and no "
             "tracking.",
             "A Zniffer only listens; it never transmits on your network. Connecting to a Z-Wave JS "
@@ -367,7 +367,7 @@ SECTIONS = [
             "repeaters; battery sensors, remotes and locks never repeat.",
             "That is why a network of mostly battery devices far from the controller struggles, and why "
             "adding a plug-in switch half-way often fixes a device that keeps dropping out.",
-            "On the Nodes tab, *Role: Repeater* means zwlens actually saw that node forward messages.",
+            "On the Nodes tab, *Role: Repeater* means SeeWave actually saw that node forward messages.",
         ],
         "links": [SL_NET, ZJS_FIRST],
     },
@@ -377,7 +377,7 @@ SECTIONS = [
         "body": [
             "The **home ID** is a 32-bit number (shown as 8 hex characters, like `c0ffee01`) that identifies "
             "your network. Every message carries it, so devices ignore traffic from your neighbours' "
-            "networks. When a Zniffer hears more than one home ID, zwlens shows the extra ones as *other "
+            "networks. When a Zniffer hears more than one home ID, SeeWave shows the extra ones as *other "
             "networks*.",
             "Each device gets a **node ID** when it joins. Classic mesh nodes are numbered 1 to 232; the "
             "controller is usually node 1. [[long-range|Long Range]] nodes are numbered from 256 upwards. "
@@ -406,7 +406,7 @@ SECTIONS = [
             "*heal* in older software) asks every device to measure its neighbours again and gives each one "
             "fresh routes back to the controller. Do it after moving the controller or several devices, not "
             "as routine maintenance, and expect battery devices to update only when they next wake.",
-            "Signs of routing trouble in zwlens: frequent route changes, long routes, many explorer frames, "
+            "Signs of routing trouble in SeeWave: frequent route changes, long routes, many explorer frames, "
             "and messages that only succeed on a second route. See [[faq-routing]].",
         ],
         "links": [SL_NET, ZJS_FIRST, ZJS_COMMON],
@@ -424,7 +424,7 @@ SECTIONS = [
             "delivered**.",
             "A few retries are normal on any radio network. Many retries mean weak signal, interference or "
             "bad routes, and every retry uses airtime that other devices then cannot use.",
-            "In zwlens, *Needed a retry* and *Not delivered* on the Overview, dashed messages in "
+            "In SeeWave, *Needed a retry* and *Not delivered* on the Overview, dashed messages in "
             "Conversations, and *Undelivered* on Nodes all come from this.",
         ],
         "links": [SL_NET],
@@ -443,7 +443,7 @@ SECTIONS = [
             "messages take longer on air, so they leave less room for everyone else.",
             "Controllers also **fall back** to a slower speed when a fast attempt fails, because slower "
             "transmissions are a little more robust. A device that could use 100 kbit/s but often ends up "
-            "at 40 or 9.6 kbit/s is a hint that its link is weak. zwlens flags this in the "
+            "at 40 or 9.6 kbit/s is a hint that its link is weak. SeeWave flags this in the "
             "[[faq-signal|signal troubleshooter]].",
         ],
         "links": [SL_NET],
@@ -462,7 +462,7 @@ SECTIONS = [
                 "frequencies.",
             ],
             "A device is built for one region and cannot talk to a controller set to another. A Zniffer "
-            "also has to be set to your network's region, or it hears nothing at all. In zwlens, set it "
+            "also has to be set to your network's region, or it hears nothing at all. In SeeWave, set it "
             "with the **Radio region** list while capturing.",
             "Because Z-Wave does not share the crowded 2.4 GHz band with Wi-Fi, Bluetooth and Zigbee, "
             "interference usually comes from nearby electronics instead: USB 3 ports and cables, cheap "
@@ -479,14 +479,14 @@ SECTIONS = [
             [
                 "around **−60 dBm** or stronger: excellent;",
                 "around **−75 dBm**: fine;",
-                "weaker than **−85 dBm**: weak, zwlens marks the node *Marginal*;",
+                "weaker than **−85 dBm**: weak, SeeWave marks the node *Marginal*;",
                 "weaker than **−92 dBm**: very weak, messages often get lost.",
             ],
             "The **noise floor** is the background level the receiver hears when nobody is transmitting. "
             "A quiet site is below about −95 dBm. A high noise floor (−85 dBm or above) means something "
             "nearby is drowning out weak devices.",
             "**Signal margin** is the difference between the two: how far a message stands above the noise. "
-            "zwlens wants at least 10 dB. A strong signal in a noisy place can be worse than a weaker one in "
+            "SeeWave wants at least 10 dB. A strong signal in a noisy place can be worse than a weaker one in "
             "a quiet place.",
             "Important: a Zniffer measures signal **where the Zniffer is**, not between two devices. A device "
             "can sound weak at the Zniffer and still reach its neighbour well. Zniffer RSSI conversion is "
@@ -507,7 +507,7 @@ SECTIONS = [
             "So changing a setting on a sleeping device takes effect at its next wake-up, not immediately. "
             "To hurry it, wake the device by hand (often a button press; see its manual).",
             "Waking too often drains the battery; waking too rarely means slow configuration and late "
-            "battery reports. zwlens flags wake-up problems in the known-issue library.",
+            "battery reports. SeeWave flags wake-up problems in the known-issue library.",
         ],
         "links": [SL_BATT],
     },
@@ -524,7 +524,7 @@ SECTIONS = [
             "This lets a lock respond within a second or so while running for months on batteries. The cost "
             "is airtime: each beam occupies the channel for much longer than the command itself, and every "
             "command to a lock is usually [[security|encrypted]] too.",
-            "In zwlens, FLiRS devices show *Battery, FLiRS (beam wake-up)* in the Power column, and beams "
+            "In SeeWave, FLiRS devices show *Battery, FLiRS (beam wake-up)* in the Power column, and beams "
             "appear as blue lines in Conversations. A beam followed by a successful exchange is normal, not "
             "a failure.",
         ],
@@ -568,7 +568,7 @@ SECTIONS = [
             "first five digits of its **DSK** (device specific key), printed on the device or its QR code.",
             "Encrypt what needs it: locks, garage doors, alarm sensors. Plain lights and power meters gain "
             "little from S0 and pay for it in airtime. If a device supports S2, use S2.",
-            "A Zniffer cannot read encrypted messages without the network keys, so zwlens labels them "
+            "A Zniffer cannot read encrypted messages without the network keys, so SeeWave labels them "
             "*encrypted* and shows only the wrapper. See [[faq-security]].",
         ],
         "links": [ZJS_S2],
@@ -581,7 +581,7 @@ SECTIONS = [
             "feature. For example *Binary Switch* has *Set*, *Get* and *Report*; *Battery* reports the "
             "level; *Meter* reports energy use; *Door Lock* locks and unlocks.",
             "During the [[inclusion|interview]] a device lists the command classes it supports in its "
-            "**node information frame** (NIF). zwlens uses the command classes it sees to guess each node's "
+            "**node information frame** (NIF). SeeWave uses the command classes it sees to guess each node's "
             "*Type* on the Nodes tab.",
             "Some command classes wrap others (see [[g-encapsulation|encapsulation]]): *Security 2* encrypts "
             "a command, *Multi Channel* addresses one socket of a power strip, [[supervision|Supervision]] "
@@ -671,7 +671,7 @@ SECTIONS = [
         "links": [ZJS_ZNIFFER, HA_ADAPTERS],
     },
 
-    # ------------------------------------------------------------------ why does zwlens say...
+    # ------------------------------------------------------------------ why does SeeWave say...
     {
         "id": "faq-unreachable", "group": "faq", "title": "\"Unreachable or dead nodes\"",
         "summary": "A node did not answer, was marked dead, or failed its interview.",
@@ -706,7 +706,7 @@ SECTIONS = [
                 "**Speed fallback**: a node that supports 100 kbit/s often used a slower "
                 "[[data-rates|rate]], a sign its link is marginal.",
                 "**The sniffer hears every node weakly**, the controller included: the Zniffer is probably "
-                "badly placed (far away, behind metal) or its chip setting is wrong, so zwlens skips the "
+                "badly placed (far away, behind metal) or its chip setting is wrong, so SeeWave skips the "
                 "per-node weak-signal checks. Move it or fix the setting in [[files]].",
             ],
             "Remember the Zniffer measures signal where it sits. Before moving devices, put the Zniffer "
@@ -788,7 +788,7 @@ SECTIONS = [
                 "**Marginal**: 15% or more undelivered; or heard weaker than −85 dBm; or a route to it broke; "
                 "or it accepted a command without answering; or its route changed more than twice.",
                 "**Healthy**: traffic seen and none of the above.",
-                "**Unknown**: zwlens saw no traffic from or to this node in the capture.",
+                "**Unknown**: SeeWave saw no traffic from or to this node in the capture.",
             ],
             "Node health describes one node; the [[health-score|health score]] summarises the whole network.",
         ],
@@ -811,9 +811,9 @@ SECTIONS = [
         "summary": "Why some message content cannot be shown.",
         "body": [
             "Messages protected by [[security|S0 or S2]] can only be read with your network's keys, which "
-            "zwlens does not have. It still shows who sent the message, when, its route, signal and whether "
+            "SeeWave does not have. It still shows who sent the message, when, its route, signal and whether "
             "it was delivered, which is what most troubleshooting needs.",
-            "With a Z-Wave JS log or live controller connection, zwlens sees the decrypted commands because "
+            "With a Z-Wave JS log or live controller connection, SeeWave sees the decrypted commands because "
             "the controller logs them after decrypting.",
         ],
         "links": [ZJS_S2],
@@ -822,7 +822,7 @@ SECTIONS = [
         "id": "faq-other-networks", "group": "faq", "title": "\"other networks\" or unknown home IDs",
         "summary": "Your Zniffer is also hearing your neighbours.",
         "body": [
-            "A Zniffer hears every Z-Wave network in range. zwlens treats the [[ids|home ID]] with the most "
+            "A Zniffer hears every Z-Wave network in range. SeeWave treats the [[ids|home ID]] with the most "
             "traffic as yours and labels the rest *other networks*. They are hidden by default; tick *Other "
             "networks* to see them.",
             "Neighbouring networks share the same channel, so a very busy neighbour can add to "
@@ -839,7 +839,7 @@ SECTIONS = [
                 "Make sure the stick really runs Zniffer firmware, not controller firmware.",
                 "Operate a device (switch a light) to generate traffic: idle networks can be silent for "
                 "minutes.",
-                "If zwlens says the port is in use, another program has the stick; see [[live-zniffer]].",
+                "If SeeWave says the port is in use, another program has the stick; see [[live-zniffer]].",
                 "On Linux, a permission error means your user is not yet in the `dialout` group.",
             ],
         ],
@@ -860,7 +860,7 @@ GLOSSARY = [
      "command-classes"),
     ("Controller", "The device that runs the network: adds and removes devices and computes routes. "
      "Usually your hub or USB stick.", "zwave"),
-    ("Conversation", "zwlens's grouping of messages between the same two nodes until a few seconds of "
+    ("Conversation", "SeeWave's grouping of messages between the same two nodes until a few seconds of "
      "silence.", "tab-conversations"),
     ("CRC / checksum", "A few bytes that let the receiver detect a corrupted message. \"Bad checksum\" means "
      "the frame was damaged on the way.", "acks"),
@@ -870,7 +870,7 @@ GLOSSARY = [
     ("DSK", "Device specific key: a code printed on S2 devices. You type its first five digits to confirm "
      "the device during secure inclusion.", "security"),
     ("Encapsulation", "Wrapping one command inside another, for example to encrypt it (S0, S2), address an "
-     "endpoint (Multi Channel), ask for confirmation (Supervision) or split it (Transport Service). zwlens "
+     "endpoint (Multi Channel), ask for confirmation (Supervision) or split it (Transport Service). SeeWave "
      "shows these as small tags.", "command-classes"),
     ("End device", "A node that only sends and receives for itself and never repeats for others.", "mesh"),
     ("Exclusion", "Removing a device from a network and resetting it so it can join another.", "inclusion"),
@@ -881,7 +881,7 @@ GLOSSARY = [
     ("FLiRS", "Frequently listening routing slave: a battery device, typically a lock, that sleeps but "
      "checks for a wake-up beam every 250 ms or 1 s.", "flirs"),
     ("Frame", "One radio transmission: a message, an ACK, a beam fragment.", "tab-frames"),
-    ("Health score", "zwlens's 0 to 100 summary of the problems found in a capture.", "health-score"),
+    ("Health score", "SeeWave's 0 to 100 summary of the problems found in a capture.", "health-score"),
     ("Home ID", "A 32-bit number identifying one Z-Wave network, carried in every message.", "ids"),
     ("Hop", "One step of a route: from one device to the next.", "routing"),
     ("Inclusion", "Adding a device to a network.", "inclusion"),
@@ -928,7 +928,7 @@ GLOSSARY = [
     ("SDR", "Software-defined radio: a general-purpose radio receiver that can also capture Z-Wave.",
      "files"),
     ("Sequence number", "A counter in each message that lets receivers spot duplicates.", "acks"),
-    ("Signal margin", "How far a signal stands above the noise floor, in dB. zwlens wants at least 10.",
+    ("Signal margin", "How far a signal stands above the noise floor, in dB. SeeWave wants at least 10.",
      "signal"),
     ("Singlecast", "A message from one node to one other node, acknowledged.", "multicast"),
     ("Sleeping device", "A battery device that keeps its radio off and wakes on a timer.", "sleeping"),
@@ -964,7 +964,7 @@ def help_data() -> dict:
     """Everything the Help tab needs, as plain JSON-ready data."""
     sections = [dict(s) for s in SECTIONS]
     sections.append({"id": "glossary", "group": "ref", "title": "Glossary",
-                     "summary": "Every Z-Wave and zwlens term used in the app, in one place.",
+                     "summary": "Every Z-Wave and SeeWave term used in the app, in one place.",
                      "body": [], "links": [ZJS_DOCS]})
     return {"groups": [{"id": g, "title": t} for g, t in GROUPS], "sections": sections,
             "glossary": glossary()}

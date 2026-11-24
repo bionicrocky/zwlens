@@ -1,4 +1,4 @@
-"""Regenerate zwlens/web/favicon.ico from the logo's geometry. Developer tool; needs Pillow."""
+"""Regenerate seewave/web/favicon.ico from the logo's geometry. Developer tool; needs Pillow."""
 import math
 from pathlib import Path
 
@@ -17,15 +17,19 @@ def stroke(d, pts, width, colour):
 
 img = Image.new("RGBA", (64 * S, 64 * S), (0, 0, 0, 0))
 d = ImageDraw.Draw(img)
-d.ellipse([(27 - 19) * S, (27 - 19) * S, (27 + 19) * S, (27 + 19) * S], outline=GREY, width=5 * S)
-stroke(d, [(41, 41), (57, 57)], 7, GREY)
-wave = []
-for k in range(4):  # four quadratic arcs, alternating up and down, as in the SVG path
-    x0, sign = 13 + 7 * k, (-1 if k % 2 == 0 else 1)
-    for i in range(21):
-        t = i / 20
-        wave.append((x0 + 7 * t, 27 + sign * 10 * 2 * t * (1 - t)))
-stroke(d, wave, 4, BLUE)
-out = Path(__file__).resolve().parent.parent / "zwlens" / "web" / "favicon.ico"
+for cx in (17, 47):  # the two lenses
+    d.ellipse([(cx - 12) * S, (36 - 12) * S, (cx + 12) * S, (36 + 12) * S], outline=GREY, width=5 * S)
+stroke(d, [(28 + 8 * i / 20, 33 - 6 * 2 * (i / 20) * (1 - i / 20)) for i in range(21)], 4, GREY)  # bridge
+stroke(d, [(5.5, 31.5), (2.5, 24)], 4, GREY)  # temples
+stroke(d, [(58.5, 31.5), (61.5, 24)], 4, GREY)
+for left in (9, 39):  # a wave in each lens: four quadratic arcs, alternating up and down, as in the SVG path
+    wave = []
+    for k in range(4):
+        x0, sign = left + 4 * k, (-1 if k % 2 == 0 else 1)
+        for i in range(21):
+            u = i / 20
+            wave.append((x0 + 4 * u, 36 + sign * 7 * 2 * u * (1 - u)))
+    stroke(d, wave, 3.5, BLUE)
+out = Path(__file__).resolve().parent.parent / "seewave" / "web" / "favicon.ico"
 img.resize((256, 256), Image.LANCZOS).save(out, sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
 print("wrote", out, out.stat().st_size, "bytes")
